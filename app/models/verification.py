@@ -18,8 +18,10 @@ class VerificationCode(Base):
     """
     Model for storing verification codes sent to users
     """
+    __tablename__ = "verification_codes"
+    
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     code = Column(String(10), nullable=False)  # The verification code
     verification_type = Column(SQLEnum(VerificationType), nullable=False)
     is_used = Column(Boolean, default=False)

@@ -3,11 +3,19 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 from alembic import context
-from app.db.base import Base
-from app.models import User, Profile
 
 # Load environment variables
 load_dotenv()
+
+# Import Base and all models
+from app.db.base import Base
+from app.models.user import User
+from app.models.profile import Profile
+from app.models.verification import VerificationCode, VerificationType
+# Importing placeholders - these will be implemented later
+# Uncomment when these models are implemented
+# from app.models.chat import Chat
+# from app.models.report import Report
 
 # this is the Alembic Config object
 config = context.config

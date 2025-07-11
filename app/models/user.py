@@ -11,6 +11,8 @@ class User(Base):
     """
     User model for storing user authentication information
     """
+    __tablename__ = "users"
+    
     id = Column(Integer, primary_key=True, index=True)
     first_name = Column(String(50), nullable=False)
     last_name = Column(String(50), nullable=False)
@@ -28,6 +30,7 @@ class User(Base):
     
     # Relationships
     profile = relationship("Profile", back_populates="user", uselist=False)
+    verification_codes = relationship("VerificationCode", back_populates="user", cascade="all, delete-orphan")
 
     @property
     def full_name(self) -> str:
