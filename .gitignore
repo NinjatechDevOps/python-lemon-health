@@ -1,0 +1,22 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+
+.env
+
+# Ignore all files in the logs directory
+logs/*
+
+# Ignore all files in the uploads directory
+uploads/*
+
+# Ignore all files in the media directory
+media/*
+
+# Ignore all files in the static directory
+static/*
+
