@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import JWTError
 
-from apps.core.security import create_access_token, create_refresh_token, get_password_hash, verify_password, verify_token
 from apps.core.db import get_db
 from apps.accounts.models import User, VerificationType
 from apps.accounts.schemas import (
@@ -14,8 +13,10 @@ from apps.accounts.schemas import (
     UserLogin, UserResponse, VerificationCodeSubmit, VerificationRequest,
     RefreshToken
 )
-from apps.accounts.services import twilio_service
 from apps.accounts.deps import get_current_verified_user
+from apps.auth.providers.base import AuthProviderFactory
+from apps.auth.services.token import token_service
+# Import otp_service where needed to avoid circular imports
 
 router = APIRouter()
 
@@ -31,57 +32,22 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> A
     4. Send verification code
     5. Return success response
     """
-    # Check if user with this mobile number already exists
-    query = select(User).where(
-        User.mobile_number == user_in.mobile_number,
-        User.country_code == user_in.country_code
-    )
-    result = await db.execute(query)
-    existing_user = result.scalars().first()
+    # Get the mobile auth provider
+    provider = AuthProviderFactory.get_provider("mobile")
     
-    if existing_user:
+    # Register the user
+    result = await provider.register(db, user_in.dict())
+    
+    if not result["success"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with this mobile number already exists"
+            detail=result["message"]
         )
     
-    # Create new user with unverified status
-    user = User(
-        first_name=user_in.first_name,
-        last_name=user_in.last_name,
-        mobile_number=user_in.mobile_number,
-        country_code=user_in.country_code,
-        email=user_in.email,
-        hashed_password=get_password_hash(user_in.password),
-        is_active=True,
-        is_verified=False
-    )
-    
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    
-    # Send verification code
-    success, message = await twilio_service.create_verification_code(
-        db=db,
-        verification_type=VerificationType.SIGNUP,
-        mobile_number=user.mobile_number,
-        country_code=user.country_code,
-        user_id=user.id
-    )
-    
-    if not success:
-        # If SMS fails, still return success but with a warning
-        return {
-            "id": user.id,
-            "message": "User registered successfully but verification SMS could not be sent. Please try requesting a new code.",
-            "require_verification": True
-        }
-    
     return {
-        "id": user.id,
-        "message": "User registered successfully. Please verify your mobile number.",
-        "require_verification": True
+        "id": result["user_id"],
+        "message": result["message"],
+        "require_verification": result["require_verification"]
     }
 
 
@@ -96,62 +62,41 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)) -> Any:
     4. Generate access token
     5. Return token
     """
-    # Find user by mobile number
-    query = select(User).where(
-        User.mobile_number == user_in.mobile_number,
-        User.country_code == user_in.country_code
-    )
-    result = await db.execute(query)
-    user = result.scalars().first()
+    # Get the mobile auth provider
+    provider = AuthProviderFactory.get_provider("mobile")
     
-    # Check if user exists and password is correct
-    if not user or not verify_password(user_in.password, user.hashed_password):
+    # Authenticate the user
+    result = await provider.authenticate(db, user_in.dict())
+    
+    if not result["success"]:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect mobile number or password"
-        )
-    
-    # Check if user is active
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inactive user"
+            detail=result["message"]
         )
     
     # Check if user is verified
-    if not user.is_verified:
+    if not result["is_verified"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Mobile number not verified. Please verify your mobile number first."
         )
     
-    # Generate access token
-    access_token = create_access_token(
-        subject=str(user.id),
-        extra_data={"is_verified": user.is_verified}
+    # Generate tokens
+    access_token = token_service.create_access_token(
+        subject=str(result["user_id"]),
+        extra_data={"is_verified": result["is_verified"]}
     )
     
     # Generate refresh token
-    refresh_token = create_refresh_token(
-        subject=str(user.id)
+    refresh_token = token_service.create_refresh_token(
+        subject=str(result["user_id"])
     )
-    
-    # # If user is not verified, return a specific message but still allow login
-    # if not user.is_verified:
-    #     return {
-    #         "access_token": access_token,
-    #         "refresh_token": refresh_token,
-    #         "token_type": "bearer",
-    #         "user_id": user.id,
-    #         "message": "Please verify your mobile number to login and access all features.",
-    #         "require_verification": True
-    #     }
     
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
-        "user_id": user.id
+        "user_id": result["user_id"]
     }
 
 
@@ -179,11 +124,14 @@ async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession 
             detail="User not found"
         )
     
+    # Import here to avoid circular imports
+    from apps.auth.services.otp import otp_service
+    
     # Verify code
-    success, message = await twilio_service.verify_code(
+    success, message = await otp_service.verify_code(
         db=db,
         verification_type=VerificationType.SIGNUP,
-        mobile_number=user.mobile_number,
+        recipient=user.mobile_number,
         country_code=user.country_code,
         code=verification_in.code,
         user_id=user.id
@@ -200,13 +148,13 @@ async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession 
     await db.commit()
     
     # Generate access token
-    access_token = create_access_token(
+    access_token = token_service.create_access_token(
         subject=str(user.id),
         extra_data={"is_verified": user.is_verified}
     )
     
     # Generate refresh token
-    refresh_token = create_refresh_token(
+    refresh_token = token_service.create_refresh_token(
         subject=str(user.id)
     )
     
@@ -249,11 +197,14 @@ async def resend_verification(verification_in: VerificationRequest, db: AsyncSes
             detail="User is already verified"
         )
     
+    # Import here to avoid circular imports
+    from apps.auth.services.otp import otp_service
+    
     # Send verification code
-    success, message = await twilio_service.create_verification_code(
+    success, message = await otp_service.create_verification_code(
         db=db,
         verification_type=VerificationType.SIGNUP,
-        mobile_number=user.mobile_number,
+        recipient=user.mobile_number,
         country_code=user.country_code,
         user_id=user.id
     )
@@ -290,11 +241,14 @@ async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = 
             detail="User not found"
         )
     
+    # Import here to avoid circular imports
+    from apps.auth.services.otp import otp_service
+    
     # Send verification code
-    success, message = await twilio_service.create_verification_code(
+    success, message = await otp_service.create_verification_code(
         db=db,
         verification_type=VerificationType.PASSWORD_RESET,
-        mobile_number=user.mobile_number,
+        recipient=user.mobile_number,
         country_code=user.country_code,
         user_id=user.id
     )
@@ -332,11 +286,14 @@ async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depe
             detail="User not found"
         )
     
+    # Import here to avoid circular imports
+    from apps.auth.services.otp import otp_service
+    
     # Verify code
-    success, message = await twilio_service.verify_code(
+    success, message = await otp_service.verify_code(
         db=db,
         verification_type=VerificationType.PASSWORD_RESET,
-        mobile_number=user.mobile_number,
+        recipient=user.mobile_number,
         country_code=user.country_code,
         code=reset_in.code,
         user_id=user.id
@@ -349,6 +306,7 @@ async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depe
         )
     
     # Update password
+    from apps.core.security import get_password_hash
     user.hashed_password = get_password_hash(reset_in.new_password)
     await db.commit()
     
@@ -356,79 +314,63 @@ async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depe
 
 
 @router.post("/refresh-token", response_model=Token)
-async def refresh_token(token_data: RefreshToken, db: AsyncSession = Depends(get_db)) -> Any:
+async def refresh_token(refresh_token_in: RefreshToken, db: AsyncSession = Depends(get_db)) -> Any:
     """
-    Get a new access token using a refresh token
+    Refresh access token using refresh token
     
     1. Verify refresh token
     2. Generate new access token
-    3. Return tokens
+    3. Return new tokens
     """
-    try:
-        # Verify the refresh token
-        payload = verify_token(token_data.refresh_token)
-        
-        # Check if it's actually a refresh token
-        if payload.get("token_type") != "refresh":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid token type"
-            )
-        
-        # Get user ID from token
-        user_id = payload.get("sub")
-        if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid token"
-            )
-        
-        # Get user from database
-        query = select(User).where(User.id == int(user_id))
-        result = await db.execute(query)
-        user = result.scalars().first()
-        
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-        
-        # Check if user is active
-        if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Inactive user"
-            )
-        
-        # Generate new access token
-        access_token = create_access_token(
-            subject=str(user.id),
-            extra_data={"is_verified": user.is_verified}
-        )
-        
-        # Generate new refresh token
-        new_refresh_token = create_refresh_token(
-            subject=str(user.id)
-        )
-        
-        return {
-            "access_token": access_token,
-            "refresh_token": new_refresh_token,
-            "token_type": "bearer"
-        }
-        
-    except JWTError:
+    # Verify refresh token
+    token_data = token_service.get_token_data(refresh_token_in.refresh_token)
+    
+    if not token_data or token_data.get("token_type") != "refresh":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token"
         )
+    
+    # Get user from token
+    user_id = token_data.get("sub")
+    query = select(User).where(User.id == int(user_id))
+    result = await db.execute(query)
+    user = result.scalars().first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Inactive user"
+        )
+    
+    # Generate new tokens
+    access_token = token_service.create_access_token(
+        subject=str(user.id),
+        extra_data={"is_verified": user.is_verified}
+    )
+    
+    new_refresh_token = token_service.create_refresh_token(
+        subject=str(user.id)
+    )
+    
+    return {
+        "access_token": access_token,
+        "refresh_token": new_refresh_token,
+        "token_type": "bearer",
+        "user_id": user.id
+    }
 
 
 @router.post("/change-password")
 async def change_password(
-    password_data: ChangePasswordRequest,
-    current_user: Annotated[User, Depends(get_current_verified_user)],
+    change_password_in: ChangePasswordRequest,
+    current_user: User = Depends(get_current_verified_user),
     db: AsyncSession = Depends(get_db)
 ) -> Any:
     """
@@ -439,14 +381,45 @@ async def change_password(
     3. Return success response
     """
     # Verify current password
-    if not verify_password(password_data.current_password, current_user.hashed_password):
+    from apps.core.security import verify_password, get_password_hash
+    if not verify_password(change_password_in.current_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Incorrect current password"
         )
     
     # Update password
-    current_user.hashed_password = get_password_hash(password_data.new_password)
+    current_user.hashed_password = get_password_hash(change_password_in.new_password)
     await db.commit()
     
     return {"message": "Password changed successfully"}
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_info(current_user: User = Depends(get_current_verified_user)) -> Any:
+    """
+    Get information about the current user
+    """
+    # Return all required fields for UserResponse
+    return {
+        "id": current_user.id,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+        "mobile_number": current_user.mobile_number,
+        "country_code": current_user.country_code,
+        "email": current_user.email,
+        "is_verified": current_user.is_verified,
+        "is_active": current_user.is_active,
+        "created_at": current_user.created_at,
+        "updated_at": current_user.updated_at
+    }
+
+
+@router.get("/providers")
+async def get_auth_providers() -> Any:
+    """
+    Get available authentication providers
+    """
+    return {
+        "providers": AuthProviderFactory.get_available_providers()
+    }

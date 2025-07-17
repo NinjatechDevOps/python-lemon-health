@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel, Field, validator
 
@@ -42,88 +42,46 @@ class UserCreate(UserBase):
 
 class UserLogin(BaseModel):
     """Schema for user login"""
-    mobile_number: str = Field(..., min_length=5, max_length=15)
-    country_code: str = Field("+34", min_length=2, max_length=5)  # Default to Spain (+34)
-    password: str = Field(..., min_length=1)
+    mobile_number: str
+    country_code: str
+    password: str
+
+
+class UserResponse(BaseModel):
+    """Schema for user response"""
+    id: int
+    first_name: str
+    last_name: str
+    mobile_number: str
+    country_code: str
+    email: Optional[str] = None
+    is_verified: bool
+    is_active: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
     
-    @validator('mobile_number')
-    def validate_mobile_number(cls, v):
-        # Remove any spaces or special characters
-        v = ''.join(filter(str.isdigit, v))
-        if not v:
-            raise ValueError('Mobile number must contain digits')
-        return v
+    class Config:
+        from_attributes = True
 
 
 class VerificationRequest(BaseModel):
-    """Schema for verification code request"""
-    mobile_number: str = Field(..., min_length=5, max_length=15)
-    country_code: str = Field("+34", min_length=2, max_length=5)  # Default to Spain (+34)
-    
-    @validator('mobile_number')
-    def validate_mobile_number(cls, v):
-        # Remove any spaces or special characters
-        v = ''.join(filter(str.isdigit, v))
-        if not v:
-            raise ValueError('Mobile number must contain digits')
-        return v
+    """Schema for requesting verification code"""
+    mobile_number: str
+    country_code: str
 
 
-class VerificationCodeSubmit(BaseModel):
+class VerificationCodeSubmit(VerificationRequest):
     """Schema for submitting verification code"""
-    mobile_number: str = Field(..., min_length=5, max_length=15)
-    country_code: str = Field("+34", min_length=2, max_length=5)  # Default to Spain (+34)
-    code: str = Field(..., min_length=6, max_length=6)
-    
-    @validator('mobile_number')
-    def validate_mobile_number(cls, v):
-        # Remove any spaces or special characters
-        v = ''.join(filter(str.isdigit, v))
-        if not v:
-            raise ValueError('Mobile number must contain digits')
-        return v
+    code: str
 
 
-class ForgotPasswordRequest(BaseModel):
-    """Schema for forgot password request"""
-    mobile_number: str = Field(..., min_length=5, max_length=15)
-    country_code: str = Field("+34", min_length=2, max_length=5)  # Default to Spain (+34)
-    
-    @validator('mobile_number')
-    def validate_mobile_number(cls, v):
-        # Remove any spaces or special characters
-        v = ''.join(filter(str.isdigit, v))
-        if not v:
-            raise ValueError('Mobile number must contain digits')
-        return v
+class ForgotPasswordRequest(VerificationRequest):
+    """Schema for requesting password reset"""
+    pass
 
 
-class ResetPasswordRequest(BaseModel):
-    """Schema for password reset"""
-    mobile_number: str = Field(..., min_length=5, max_length=15)
-    country_code: str = Field("+34", min_length=2, max_length=5)  # Default to Spain (+34)
-    code: str = Field(..., min_length=6, max_length=6)
-    new_password: str = Field(..., min_length=8)
-    confirm_password: str = Field(..., min_length=8)
-    
-    @validator('confirm_password')
-    def passwords_match(cls, v, values, **kwargs):
-        if 'new_password' in values and v != values['new_password']:
-            raise ValueError('Passwords do not match')
-        return v
-    
-    @validator('mobile_number')
-    def validate_mobile_number(cls, v):
-        # Remove any spaces or special characters
-        v = ''.join(filter(str.isdigit, v))
-        if not v:
-            raise ValueError('Mobile number must contain digits')
-        return v
-
-
-class ChangePasswordRequest(BaseModel):
-    """Schema for changing password (for authenticated users)"""
-    current_password: str = Field(..., min_length=1)
+class ResetPasswordRequest(VerificationCodeSubmit):
+    """Schema for resetting password"""
     new_password: str = Field(..., min_length=8)
     confirm_password: str = Field(..., min_length=8)
     
@@ -135,26 +93,31 @@ class ChangePasswordRequest(BaseModel):
 
 
 class Token(BaseModel):
-    """Schema for JWT token"""
+    """Schema for authentication token"""
     access_token: str
-    token_type: str = "bearer"
-    refresh_token: Optional[str] = None
+    refresh_token: str
+    token_type: str
+    user_id: Optional[int] = None
+    message: Optional[str] = None
+    require_verification: Optional[bool] = None
 
 
 class RefreshToken(BaseModel):
-    """Schema for refresh token request"""
+    """Schema for refresh token"""
     refresh_token: str
 
 
-class UserResponse(UserBase):
-    """Schema for user response"""
-    id: int
-    is_active: bool
-    is_verified: bool
-    created_at: datetime
+class ChangePasswordRequest(BaseModel):
+    """Schema for changing password"""
+    current_password: str
+    new_password: str = Field(..., min_length=8)
+    confirm_password: str = Field(..., min_length=8)
     
-    class Config:
-        from_attributes = True
+    @validator('confirm_password')
+    def passwords_match(cls, v, values, **kwargs):
+        if 'new_password' in values and v != values['new_password']:
+            raise ValueError('Passwords do not match')
+        return v
 
 
 class ProfileBase(BaseModel):

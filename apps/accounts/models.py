@@ -7,6 +7,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from apps.core.base import Base
 
+# Import the table directly instead of the module to avoid circular imports
+from apps.auth.models.rbac import user_role
+
+
+class VerificationType(Enum):
+    SIGNUP = "signup"
+    PASSWORD_RESET = "password_reset"
+
 
 class User(Base):
     """
@@ -32,6 +40,8 @@ class User(Base):
     # Relationships
     profile: Mapped["Profile"] = relationship("Profile", back_populates="user", uselist=False)
     verification_codes: Mapped[List["VerificationCode"]] = relationship("VerificationCode", back_populates="user", cascade="all, delete-orphan")
+    # Use string reference to avoid circular imports
+    roles: Mapped[List["apps.auth.models.rbac.Role"]] = relationship("apps.auth.models.rbac.Role", secondary=user_role, back_populates="users")
 
     @property
     def full_name(self) -> str:
@@ -42,13 +52,6 @@ class User(Base):
     def full_phone_number(self) -> str:
         """Get full phone number with country code"""
         return f"{self.country_code}{self.mobile_number}"
-
-
-class VerificationType(str, Enum):
-    """Types of verification"""
-    SIGNUP = "signup"
-    PASSWORD_RESET = "password_reset"
-    LOGIN = "login"
 
 
 class VerificationCode(Base):

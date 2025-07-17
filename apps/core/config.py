@@ -33,10 +33,14 @@ class Settings(BaseSettings):
     # VERIFICATION
     VERIFICATION_CODE_EXPIRY_SECONDS: int = 300  # 5 minutes
     
+    # LOGGING
+    ENABLE_SQL_ECHO: bool = False
+    
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",
         case_sensitive=True,
     )
+
 
 settings = Settings()

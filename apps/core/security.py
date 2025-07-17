@@ -6,7 +6,11 @@ from passlib.context import CryptContext
 
 from apps.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Standard password hashing configuration
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto"
+)
 
 
 def create_access_token(subject: str, extra_data: Optional[Dict[str, Any]] = None) -> str:

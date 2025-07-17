@@ -1,6 +1,6 @@
-from typing import Annotated
+from typing import Annotated, List, Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Security
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +10,7 @@ from apps.core.db import get_db
 from apps.core.config import settings
 from apps.core.security import verify_token
 from apps.accounts.models import User
+from apps.auth.models.rbac import Role, Permission
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -62,4 +63,60 @@ async def get_current_verified_user(
             detail="User not verified"
         )
     
-    return current_user 
+    return current_user
+
+
+async def get_user_permissions(
+    current_user: Annotated[User, Depends(get_current_verified_user)],
+    db: AsyncSession = Depends(get_db)
+) -> List[str]:
+    """
+    Get the permissions for the current user
+    """
+    permissions = set()
+    
+    # Get all roles for the user
+    for role in current_user.roles:
+        # Get all permissions for each role
+        for permission in role.permissions:
+            permissions.add(permission.name)
+    
+    return list(permissions)
+
+
+def has_permission(required_permission: str):
+    """
+    Dependency to check if the user has the required permission
+    """
+    async def _has_permission(
+        permissions: List[str] = Depends(get_user_permissions)
+    ) -> bool:
+        if required_permission not in permissions:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission denied: {required_permission} required"
+            )
+        return True
+    
+    return _has_permission
+
+
+def has_role(required_role: str):
+    """
+    Dependency to check if the user has the required role
+    """
+    async def _has_role(
+        current_user: User = Depends(get_current_verified_user),
+        db: AsyncSession = Depends(get_db)
+    ) -> bool:
+        # Check if the user has the required role
+        for role in current_user.roles:
+            if role.name == required_role:
+                return True
+        
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Role {required_role} required"
+        )
+    
+    return _has_role 

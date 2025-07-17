@@ -3,7 +3,7 @@ from sqlalchemy.orm import DeclarativeBase
 
 from apps.core.config import settings
 
-# Create async engine
+# Create async engine with optimized logging
 engine = create_async_engine(
     settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
     pool_size=20,
@@ -11,8 +11,10 @@ engine = create_async_engine(
     pool_timeout=30,
     pool_recycle=1800,
     pool_pre_ping=True,
-    echo=settings.ENVIRONMENT == "development",
-    # echo=False  # Disable SQL query logging
+    # Only enable SQL echo in development mode
+    echo=settings.ENVIRONMENT == "development" and settings.ENABLE_SQL_ECHO,
+    # Reduce log verbosity
+    echo_pool=False
 )
 
 # Create async session factory
