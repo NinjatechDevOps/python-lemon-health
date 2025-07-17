@@ -25,10 +25,10 @@ class Settings(BaseSettings):
     # TWILIO
     TWILIO_ACCOUNT_SID: str
     TWILIO_AUTH_TOKEN: str
-    TWILIO_PHONE_NUMBER: str  # Changed from TWILIO_FROM_PHONE_NUMBER
+    TWILIO_PHONE_NUMBER: str  
     
     # Setting these as optional with default values
-    TWILIO_VERIFY_SERVICE_SID: str = "default_verify_sid"  # Added default value
+    TWILIO_VERIFY_SERVICE_SID: str
     
     # VERIFICATION
     VERIFICATION_CODE_EXPIRY_SECONDS: int = 300  # 5 minutes

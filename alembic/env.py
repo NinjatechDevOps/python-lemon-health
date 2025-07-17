@@ -8,20 +8,20 @@ from alembic import context
 load_dotenv()
 
 # Import Base and all models
-from app.db.base import Base
-from app.models.user import User
-from app.models.profile import Profile
-from app.models.verification import VerificationCode, VerificationType
+from apps.core.base import Base
+from apps.accounts.models import User, Profile, VerificationCode, VerificationType
 # Importing placeholders - these will be implemented later
 # Uncomment when these models are implemented
-# from app.models.chat import Chat
-# from app.models.report import Report
+# from apps.chat.models import Chat
+# from apps.role.models import Role
 
 # this is the Alembic Config object
 config = context.config
 
 # Set the sqlalchemy.url from environment variable
-config.set_main_option("sqlalchemy.url", os.environ.get("DATABASE_URL"))
+# For Alembic, we still use the synchronous driver
+db_url = os.environ.get("DATABASE_URL")
+config.set_main_option("sqlalchemy.url", db_url)
 
 # Interpret the config file for Python logging
 if config.config_file_name is not None:
