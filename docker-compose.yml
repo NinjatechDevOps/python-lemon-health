@@ -1,0 +1,29 @@
+services:
+  app:
+    build:
+      context: .
+    container_name: lemonhealth-api
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+      - media_data:/app/media
+    env_file:
+      - .env.docker
+    restart: on-failure
+  db:
+    image: postgres:15
+    container_name: lemonhealth-db
+    restart: always
+    env_file:
+      - .env.docker
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+volumes:
+  postgres_data:
+  media_data:

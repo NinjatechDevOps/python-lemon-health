@@ -123,6 +123,46 @@ FastAPI automatically generates interactive API documentation:
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
 
+## Docker Setup
+
+### 1. Create Docker Environment File
+
+Copy the example Docker environment file and update it with your configuration:
+
+```bash
+cp .env.docker.example .env.docker
+```
+
+Edit the `.env.docker` file with your database credentials, Twilio API keys, and other settings.
+
+### 2. Build and Start Docker Containers
+
+```bash
+docker-compose up -d
+```
+
+This will:
+- Build the Docker image for the API
+- Start the PostgreSQL database
+- Run database migrations automatically
+- Start the FastAPI application
+
+### 3. Access the API
+
+The API will be available at http://localhost:8000
+
+### 4. Stop Docker Containers
+
+```bash
+docker-compose down
+```
+
+### 5. View Logs
+
+```bash
+docker-compose logs -f app
+```
+
 ## Project Structure
 
 ```
