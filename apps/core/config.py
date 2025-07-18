@@ -1,5 +1,6 @@
 import os
 from typing import List, Union
+from pathlib import Path
 
 from pydantic import validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -33,10 +34,22 @@ class Settings(BaseSettings):
     # VERIFICATION
     VERIFICATION_CODE_EXPIRY_SECONDS: int = 300  # 5 minutes
     
+    # MEDIA STORAGE
+    MEDIA_ROOT: str = str(Path("media").absolute())
+    MEDIA_URL: str = "/media/"
+    ALLOWED_IMAGE_TYPES: List[str] = ["image/jpeg", "image/png", "image/jpg"]
+    MAX_IMAGE_SIZE: int = 5 * 1024 * 1024  # 5MB
+    
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",
         case_sensitive=True,
     )
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Create media directory if it doesn't exist
+        os.makedirs(self.MEDIA_ROOT, exist_ok=True)
+        os.makedirs(os.path.join(self.MEDIA_ROOT, "profile_pictures"), exist_ok=True)
 
 settings = Settings()

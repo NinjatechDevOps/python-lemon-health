@@ -9,7 +9,8 @@ load_dotenv()
 
 # Import Base and all models
 from apps.core.base import Base
-from apps.accounts.models import User, Profile, VerificationCode, VerificationType
+from apps.auth.models import User, VerificationCode, VerificationType
+from apps.profile.models import Profile
 # Importing placeholders - these will be implemented later
 # Uncomment when these models are implemented
 # from apps.chat.models import Chat

@@ -1,8 +1,11 @@
 import logging
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from apps.accounts.routes import router as accounts_router
+from apps.auth.routes import router as auth_router
+from apps.profile.routes import router as profile_router
 from apps.core.config import settings
 
 # Configure logging
@@ -27,8 +30,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount media directory for serving static files
+os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+app.mount("/media", StaticFiles(directory=settings.MEDIA_ROOT), name="media")
+
 # Include API routes
-app.include_router(accounts_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(profile_router, prefix="/api/profile", tags=["User Profile"])
 # app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])
 # app.include_router(role_router, prefix="/api/roles", tags=["Roles"])
 

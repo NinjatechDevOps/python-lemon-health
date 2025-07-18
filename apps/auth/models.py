@@ -1,11 +1,14 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, ForwardRef
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Float, Date
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from apps.core.base import Base
+
+# Forward reference to Profile model
+ProfileRef = ForwardRef("Profile")
 
 
 class User(Base):
@@ -30,7 +33,7 @@ class User(Base):
     email: Mapped[Optional[str]] = mapped_column(String(255), unique=True, index=True, nullable=True)
     
     # Relationships
-    profile: Mapped["Profile"] = relationship("Profile", back_populates="user", uselist=False)
+    profile: Mapped[ProfileRef] = relationship("Profile", back_populates="user", uselist=False)
     verification_codes: Mapped[List["VerificationCode"]] = relationship("VerificationCode", back_populates="user", cascade="all, delete-orphan")
 
     @property
@@ -76,21 +79,3 @@ class VerificationCode(Base):
     def is_expired(self) -> bool:
         """Check if code is expired"""
         return datetime.utcnow() > self.expires_at
-
-
-class Profile(Base):
-    """
-    Profile model for storing additional user information
-    """
-    __tablename__ = "profiles"
-    
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
-    date_of_birth: Mapped[Optional[datetime]] = mapped_column(Date, nullable=True)
-    height: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # in cm
-    height_unit: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # "cm" or "ft/in"
-    weight: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # in kg
-    gender: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    
-    # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="profile")

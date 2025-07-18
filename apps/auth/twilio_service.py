@@ -1,6 +1,5 @@
 import random
 import string
-import os
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
 
@@ -10,7 +9,7 @@ from twilio.rest import Client
 from twilio.base.exceptions import TwilioRestException
 
 from apps.core.config import settings
-from apps.accounts.models import VerificationCode, VerificationType, User
+from apps.auth.models import VerificationCode, VerificationType
 
 
 class TwilioService:
@@ -176,4 +175,4 @@ class TwilioService:
 
 
 # Create an instance of the service
-twilio_service = TwilioService()
+twilio_service = TwilioService() 
