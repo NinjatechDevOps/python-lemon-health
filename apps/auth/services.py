@@ -2,14 +2,14 @@ import random
 import string
 import os
 from datetime import datetime, timedelta
-from typing import Optional, Tuple, Any
+from typing import Optional, Tuple, Any, List
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import JWTError
 
 from apps.core.config import settings
-from apps.core.security import create_access_token, create_refresh_token, get_password_hash, verify_password
+from apps.core.security import create_access_token, create_refresh_token, get_password_hash, verify_password, verify_token
 from apps.auth.models import User, VerificationType
 from apps.auth.twilio_service import twilio_service
 
@@ -92,21 +92,35 @@ class AuthService:
         email: Optional[str] = None
     ) -> Tuple[User, bool, str]:
         """
-        Register a new user and send verification code
+        Register a new user
         
+        Args:
+            db: Database session
+            first_name: User's first name
+            last_name: User's last name
+            mobile_number: User's mobile number
+            country_code: User's country code
+            password: User's password
+            email: User's email (optional)
+            
         Returns:
             Tuple of (user, success, message)
         """
-        # Create user
-        user = await AuthService.create_user(
-            db=db,
+        # Create new user with unverified status
+        user = User(
             first_name=first_name,
             last_name=last_name,
             mobile_number=mobile_number,
             country_code=country_code,
-            password=password,
-            email=email
+            email=email,
+            hashed_password=get_password_hash(password),
+            is_active=True,
+            is_verified=False
         )
+        
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
         
         # Send verification code
         success, message = await twilio_service.create_verification_code(
@@ -190,7 +204,8 @@ class AuthService:
             verification_type=VerificationType.SIGNUP,
             mobile_number=user.mobile_number,
             country_code=user.country_code,
-            code=code
+            code=code,
+            user_id=user.id  # Pass the user_id explicitly
         )
         
         if not success:

@@ -57,19 +57,20 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> A
         email=user_in.email
     )
     
-    if not success:
-        # If SMS fails, still return success but with a warning
-        return {
-            "id": user.id,
-            "message": "User registered successfully but verification SMS could not be sent. Please try requesting a new code.",
-            "require_verification": True
-        }
-    
-    return {
+    response = {
         "id": user.id,
-        "message": "User registered successfully. Please verify your mobile number.",
+        "success": success,
         "require_verification": True
     }
+    
+    if not success:
+        # If SMS fails, still return success but with the error message
+        response["message"] = message
+        response["fallback"] = "If you don't receive the code, you can request a new one."
+    else:
+        response["message"] = "User registered successfully. Please verify your mobile number."
+    
+    return response
 
 
 @router.post("/login", response_model=Token)
@@ -117,9 +118,10 @@ async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession 
     )
     
     if not success:
+        # Include the code in the error response for debugging
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result
+            detail=f"{result} (Code: {verification_in.code})"
         )
     
     return result
@@ -164,12 +166,14 @@ async def resend_verification(verification_in: VerificationRequest, db: AsyncSes
     )
     
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to send verification code"
-        )
+        # Return 200 with error message instead of 500
+        return {
+            "success": False,
+            "message": message,
+            "fallback": "If you don't receive the code, please contact support."
+        }
     
-    return {"message": "Verification code sent successfully"}
+    return {"success": True, "message": "Verification code sent successfully"}
 
 
 @router.post("/forgot-password")
@@ -204,12 +208,16 @@ async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = 
     )
     
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to send verification code"
-        )
+        # Return 200 with error message instead of 500
+        # This is because the verification code was created in the database
+        # but the SMS delivery failed
+        return {
+            "success": False,
+            "message": message,
+            "fallback": "If you don't receive the code, please contact support."
+        }
     
-    return {"message": "Password reset code sent successfully"}
+    return {"success": True, "message": "Password reset code sent successfully"}
 
 
 @router.post("/reset-password")

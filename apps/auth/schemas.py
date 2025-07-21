@@ -15,15 +15,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """Schema for user registration"""
-    password: str = Field(..., min_length=8)
-    confirm_password: str = Field(..., min_length=8)
-    terms_accepted: bool = Field(...)
-    
-    @validator('confirm_password')
-    def passwords_match(cls, v, values, **kwargs):
-        if 'password' in values and v != values['password']:
-            raise ValueError('Passwords do not match')
-        return v
+    password: str = Field(..., min_length=8, max_length=16, description="Password must be 8-16 characters")
     
     @validator('mobile_number')
     def validate_mobile_number(cls, v):
@@ -33,10 +25,18 @@ class UserCreate(UserBase):
             raise ValueError('Mobile number must contain digits')
         return v
     
-    @validator('terms_accepted')
-    def validate_terms_accepted(cls, v):
-        if not v:
-            raise ValueError('Terms and conditions must be accepted')
+    @validator('password')
+    def validate_password(cls, v):
+        if len(v) < 8 or len(v) > 16:
+            raise ValueError('Password must be between 8 and 16 characters')
+        if not any(char.isupper() for char in v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not any(char.islower() for char in v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not any(char.isdigit() for char in v):
+            raise ValueError('Password must contain at least one number')
+        if not any(char in "!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~" for char in v):
+            raise ValueError('Password must contain at least one special character')
         return v
 
 
@@ -103,14 +103,7 @@ class ResetPasswordRequest(BaseModel):
     mobile_number: str = Field(..., min_length=5, max_length=15)
     country_code: str = Field("+34", min_length=2, max_length=5)  # Default to Spain (+34)
     code: str = Field(..., min_length=6, max_length=6)
-    new_password: str = Field(..., min_length=8)
-    confirm_password: str = Field(..., min_length=8)
-    
-    @validator('confirm_password')
-    def passwords_match(cls, v, values, **kwargs):
-        if 'new_password' in values and v != values['new_password']:
-            raise ValueError('Passwords do not match')
-        return v
+    new_password: str = Field(..., min_length=8, max_length=16, description="Password must be 8-16 characters")
     
     @validator('mobile_number')
     def validate_mobile_number(cls, v):
@@ -119,18 +112,39 @@ class ResetPasswordRequest(BaseModel):
         if not v:
             raise ValueError('Mobile number must contain digits')
         return v
+    
+    @validator('new_password')
+    def validate_password(cls, v):
+        if len(v) < 8 or len(v) > 16:
+            raise ValueError('Password must be between 8 and 16 characters')
+        if not any(char.isupper() for char in v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not any(char.islower() for char in v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not any(char.isdigit() for char in v):
+            raise ValueError('Password must contain at least one number')
+        if not any(char in "!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~" for char in v):
+            raise ValueError('Password must contain at least one special character')
+        return v
 
 
 class ChangePasswordRequest(BaseModel):
     """Schema for changing password (for authenticated users)"""
     current_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=8)
-    confirm_password: str = Field(..., min_length=8)
+    new_password: str = Field(..., min_length=8, max_length=16, description="Password must be 8-16 characters")
     
-    @validator('confirm_password')
-    def passwords_match(cls, v, values, **kwargs):
-        if 'new_password' in values and v != values['new_password']:
-            raise ValueError('Passwords do not match')
+    @validator('new_password')
+    def validate_password(cls, v):
+        if len(v) < 8 or len(v) > 16:
+            raise ValueError('Password must be between 8 and 16 characters')
+        if not any(char.isupper() for char in v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not any(char.islower() for char in v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not any(char.isdigit() for char in v):
+            raise ValueError('Password must contain at least one number')
+        if not any(char in "!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~" for char in v):
+            raise ValueError('Password must contain at least one special character')
         return v
 
 

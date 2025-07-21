@@ -28,8 +28,17 @@ class TwilioService:
         """Generate a random verification code"""
         return ''.join(random.choices(string.digits, k=length))
     
-    def send_sms(self, to_phone: str, message: str) -> bool:
-        """Send SMS message using Twilio"""
+    def send_sms(self, to_phone: str, message: str) -> tuple[bool, str]:
+        """
+        Send SMS message using Twilio
+        
+        Args:
+            to_phone: Recipient's phone number
+            message: Message content
+            
+        Returns:
+            Tuple of (success, message)
+        """
         try:
             # Debug: Print SMS parameters
             print(f"DEBUG - Sending SMS to: {to_phone}")
@@ -41,10 +50,30 @@ class TwilioService:
                 from_=self.phone_number,
                 to=to_phone
             )
-            return True
+            return True, "SMS sent successfully"
         except TwilioRestException as e:
-            print(f"Twilio error: {e}")
-            return False
+            error_code = getattr(e, 'code', None)
+            error_msg = str(e)
+            
+            # Handle specific Twilio error codes
+            if error_code == 20003:
+                print(f"Twilio authentication error: {error_msg}")
+                return False, "SMS service authentication failed. Please contact support."
+            elif error_code == 21211:
+                print(f"Invalid phone number: {error_msg}")
+                return False, "Invalid phone number format"
+            elif error_code == 21608:
+                print(f"Unverified phone number: {error_msg}")
+                return False, "This phone number is not verified with our SMS service"
+            elif error_code == 21610:
+                print(f"Message body too long: {error_msg}")
+                return False, "Message content too long"
+            else:
+                print(f"Twilio error {error_code}: {error_msg}")
+                return False, "Failed to send SMS. Please try again later."
+        except Exception as e:
+            print(f"Unexpected error sending SMS: {str(e)}")
+            return False, "An unexpected error occurred while sending SMS"
     
     async def create_verification_code(
         self, 
@@ -103,9 +132,14 @@ class TwilioService:
             code=code,
             verification_type=verification_type,
             expires_at=expires_at,
-            mobile_number=None if user_id else mobile_number,
-            country_code=None if user_id else country_code
+            # Always store mobile_number and country_code regardless of whether user_id is provided
+            # This ensures we can verify by either method
+            mobile_number=mobile_number,
+            country_code=country_code
         )
+        
+        # Debug: Print verification code details
+        print(f"DEBUG - Creating verification code: type={verification_type}, code={code}, user_id={user_id}, mobile={mobile_number}")
         
         db.add(verification_code)
         await db.commit()
@@ -115,10 +149,13 @@ class TwilioService:
         full_phone = f"{country_code}{mobile_number}"
         message = f"Your Lemon Health verification code is: {code}. Valid for 5 minutes."
         
-        if self.send_sms(full_phone, message):
+        success, error_message = self.send_sms(full_phone, message)
+        if success:
             return True, "Verification code sent successfully"
         else:
-            return False, "Failed to send verification code"
+            # Even if SMS fails, we've created the code in the database
+            # This allows for alternative delivery or manual verification in development
+            return False, error_message
     
     async def verify_code(
         self, 
@@ -161,11 +198,18 @@ class TwilioService:
                 VerificationCode.country_code == country_code
             )
         
+        # Debug: Print query parameters
+        print(f"DEBUG - Verification query params: type={verification_type}, code={code}, user_id={user_id}, mobile={mobile_number}, country={country_code}")
+        
         result = await db.execute(query)
         verification_code = result.scalars().first()
         
         if not verification_code:
+            print(f"DEBUG - No verification code found for: type={verification_type}, code={code}, user_id={user_id}")
             return False, "Invalid or expired verification code"
+        
+        # Debug: Print found verification code details
+        print(f"DEBUG - Found verification code: id={verification_code.id}, user_id={verification_code.user_id}, mobile={verification_code.mobile_number}")
         
         # Mark code as used
         verification_code.is_used = True
