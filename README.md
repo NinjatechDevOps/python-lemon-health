@@ -11,7 +11,9 @@ Lemon Health is a health and wellness application that provides personalized nut
 - User authentication with mobile number verification via SMS
 - User profile management
 - JWT-based authentication with refresh tokens
+- Token blacklisting for secure logout
 - PostgreSQL database with SQLAlchemy ORM
+- Redis for token blacklisting
 - Asynchronous API endpoints
 
 ## Tech Stack
@@ -22,12 +24,14 @@ Lemon Health is a health and wellness application that provides personalized nut
 - **Migrations**: Alembic
 - **Authentication**: JWT (jose)
 - **SMS Verification**: Twilio
+- **Token Storage**: Redis
 - **Dependency Management**: pip
 
 ## Prerequisites
 
 - Python 3.8+
 - PostgreSQL 12+
+- Redis 6+
 - Twilio account (for SMS verification)
 
 ## Setup Instructions
@@ -71,6 +75,9 @@ Edit the `.env` file with your database credentials, Twilio API keys, and other 
 ```
 # Database
 DATABASE_URL=postgresql://username:password@localhost/lemonhealth_db
+
+# Redis (for token blacklisting)
+REDIS_URL=redis://localhost:6379/0
 
 # Security
 SECRET_KEY="your-secret-key"
@@ -200,6 +207,7 @@ python-lemon-health/
 - `POST /api/auth/verify`: Verify mobile number with SMS code
 - `POST /api/auth/resend-verification`: Resend verification code
 - `POST /api/auth/login`: Login with mobile number and password
+- `POST /api/auth/logout`: Logout and invalidate tokens
 - `POST /api/auth/refresh-token`: Get new access token using refresh token
 - `POST /api/auth/forgot-password`: Request password reset
 - `POST /api/auth/reset-password`: Reset password with verification code

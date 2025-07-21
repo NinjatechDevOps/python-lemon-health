@@ -18,6 +18,9 @@ python-multipart
 # SMS Authentication
 twilio
 
+# Redis (for token blacklisting)
+redis
+
 # Utilities
 python-dotenv
 httpx

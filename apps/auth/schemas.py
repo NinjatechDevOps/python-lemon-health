@@ -197,3 +197,9 @@ class ProfileResponse(ProfileBase):
     
     class Config:
         from_attributes = True 
+
+
+class LogoutRequest(BaseModel):
+    """Schema for logout request"""
+    access_token: str
+    refresh_token: Optional[str] = None 

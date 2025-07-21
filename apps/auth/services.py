@@ -288,3 +288,48 @@ class AuthService:
             
         except JWTError:
             return False, "Invalid refresh token"
+
+    @staticmethod
+    async def logout_user(access_token: str, refresh_token: Optional[str] = None) -> bool:
+        """
+        Logout a user by blacklisting their tokens
+        
+        Args:
+            access_token: The access token to blacklist
+            refresh_token: The refresh token to blacklist (optional)
+            
+        Returns:
+            bool: True if successful
+        """
+        from datetime import timedelta
+        from apps.core.redis import add_token_to_blacklist
+        
+        # Calculate remaining time for access token
+        try:
+            from apps.core.security import jwt
+            payload = jwt.decode(
+                access_token, 
+                settings.SECRET_KEY, 
+                algorithms=[settings.ALGORITHM]
+            )
+            exp = payload.get("exp")
+            if exp:
+                # Calculate remaining time
+                exp_datetime = datetime.fromtimestamp(exp)
+                remaining = exp_datetime - datetime.utcnow()
+                if remaining.total_seconds() > 0:
+                    # Add to blacklist with remaining time
+                    await add_token_to_blacklist(access_token, remaining)
+        except Exception as e:
+            print(f"Error blacklisting access token: {e}")
+        
+        # Blacklist refresh token if provided
+        if refresh_token:
+            try:
+                # Use longer expiration for refresh token
+                refresh_exp = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+                await add_token_to_blacklist(refresh_token, refresh_exp)
+            except Exception as e:
+                print(f"Error blacklisting refresh token: {e}")
+        
+        return True

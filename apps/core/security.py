@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
-from jose import jwt
+from jose import jwt, JWTError
 from passlib.context import CryptContext
 
 from apps.core.config import settings
@@ -37,11 +37,22 @@ def create_refresh_token(subject: str) -> str:
     return encoded_jwt
 
 
-def verify_token(token: str) -> Dict[str, Any]:
+async def verify_token(token: str) -> Dict[str, Any]:
     """
     Verify a token and return its payload
+    
+    Raises:
+        JWTError: If token is invalid or blacklisted
     """
-    return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    # First decode the token to validate it
+    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    
+    # Check if token is blacklisted
+    from apps.core.redis import is_token_blacklisted
+    if await is_token_blacklisted(token):
+        raise JWTError("Token has been invalidated")
+    
+    return payload
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

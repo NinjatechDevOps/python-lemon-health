@@ -12,11 +12,11 @@ from apps.auth.models import User, VerificationType
 from apps.auth.schemas import (
     ChangePasswordRequest, ForgotPasswordRequest, ResetPasswordRequest, Token, UserCreate, 
     UserLogin, UserResponse, VerificationCodeSubmit, VerificationRequest,
-    RefreshToken
+    RefreshToken, LogoutRequest
 )
 from apps.auth.services import AuthService
 from apps.auth.twilio_service import twilio_service
-from apps.auth.deps import get_current_verified_user
+from apps.auth.deps import get_current_verified_user, get_current_user
 
 router = APIRouter()
 user_router = APIRouter()
@@ -312,3 +312,29 @@ async def change_password(
     await AuthService.update_password(db, current_user, password_data.new_password)
     
     return {"message": "Password changed successfully"}
+
+@router.post("/logout")
+async def logout(
+    logout_data: LogoutRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> Any:
+    """
+    Logout a user by invalidating their tokens
+    
+    1. Add access token to blacklist
+    2. Add refresh token to blacklist if provided
+    3. Return success response
+    """
+    success = await AuthService.logout_user(
+        access_token=logout_data.access_token,
+        refresh_token=logout_data.refresh_token
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to logout"
+        )
+    
+    return {"message": "Successfully logged out"}
+

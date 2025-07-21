@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # DATABASE
     DATABASE_URL: str
     
+    # REDIS (for token blacklisting)
+    REDIS_URL: str = "redis://localhost:6379/0"
+    
     # CORS
     ALLOWED_ORIGINS: Union[str, List[str]] = ["http://localhost:3000", "http://localhost:8000"]
     
