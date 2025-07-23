@@ -39,6 +39,13 @@ class AuthService:
         return result.scalars().first()
     
     @staticmethod
+    async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
+        """Get a user by email"""
+        query = select(User).where(User.email == email)
+        result = await db.execute(query)
+        return result.scalars().first()
+    
+    @staticmethod
     async def create_user(
         db: AsyncSession,
         first_name: str,

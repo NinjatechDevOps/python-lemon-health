@@ -15,8 +15,7 @@ class ProfileBase(BaseModel):
     date_of_birth: Optional[date] = None
     height: Optional[float] = None
     height_unit: Optional[str] = Field(None, description="Height unit (cm or ft/in)")
-    weight: Optional[float] = None
-    weight_unit: Optional[str] = Field("kg", description="Weight unit (kg or lbs)")
+    weight: Optional[float] = Field(None, description="Weight unit (kg)")
     gender: Optional[str] = None
     profile_picture_url: Optional[str] = None
 
@@ -25,13 +24,7 @@ class ProfileBase(BaseModel):
         if v and v not in ['cm', 'ft/in']:
             raise ValueError('Height unit must be either "cm" or "ft/in"')
         return v
-    
-    @validator('weight_unit')
-    def validate_weight_unit(cls, v):
-        if v and v not in ['kg', 'lbs']:
-            raise ValueError('Weight unit must be either "kg" or "lbs"')
-        return v
-    
+        
     @validator('gender')
     def validate_gender(cls, v):
         if v and v not in ['Male', 'Female', 'Other']:

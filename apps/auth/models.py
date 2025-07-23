@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, List, ForwardRef
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from apps.core.base import Base
@@ -16,11 +16,14 @@ class User(Base):
     User model for storing user authentication information
     """
     __tablename__ = "users"
+    __table_args__ = (
+        UniqueConstraint('country_code', 'mobile_number', name='uq_country_mobile'),
+    )
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     first_name: Mapped[str] = mapped_column(String(50), nullable=False)
     last_name: Mapped[str] = mapped_column(String(50), nullable=False)
-    mobile_number: Mapped[str] = mapped_column(String(20), unique=True, index=True, nullable=False)
+    mobile_number: Mapped[str] = mapped_column(String(20), index=True, nullable=False)
     country_code: Mapped[str] = mapped_column(String(10), nullable=False, default="+91")  # Default to India
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

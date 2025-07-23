@@ -33,19 +33,25 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> A
     4. Send verification code
     5. Return success response
     """
-    # Check if user with this mobile number already exists
+    # Check if user with this mobile number and country code already exists
     existing_user = await AuthService.get_user_by_mobile(
         db=db,
         mobile_number=user_in.mobile_number,
         country_code=user_in.country_code
     )
-    
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with this mobile number already exists"
+            detail="User with this mobile number and country code already exists"
         )
-    
+    # Check if user with this email already exists
+    if user_in.email:
+        existing_email_user = await AuthService.get_user_by_email(db, user_in.email)
+        if existing_email_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User with this email already exists"
+            )
     # Register user and send verification code
     user, otp_sent, message = await AuthService.register_user(
         db=db,

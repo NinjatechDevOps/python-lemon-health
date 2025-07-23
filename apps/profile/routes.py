@@ -1,6 +1,6 @@
-from typing import Any
+from typing import Any, Optional
 import os
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -56,53 +56,73 @@ async def get_my_profile(
     )
 
 
-@router.post("/", response_model=BaseResponse[ProfileResponse], status_code=status.HTTP_201_CREATED)
-async def create_profile(
-    profile_data: ProfileCreate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-) -> Any:
-    """
-    Create a new profile for the current user
-    """
-    # Check if profile already exists
-    existing_profile = await ProfileService.get_profile_by_user_id(db, current_user.id)
-    if existing_profile:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Profile already exists for this user"
-        )
-    # Create profile
-    profile = await ProfileService.create_profile(db, profile_data, current_user.id)
-    # Add name from user data
-    response_data = ProfileResponse.model_validate(profile)
-    response_data.name = f"{current_user.first_name} {current_user.last_name}"
-    return BaseResponse[
-        ProfileResponse
-    ](
-        success=True,
-        message="Profile created successfully",
-        data=response_data
-    )
+# @router.post("/", response_model=BaseResponse[ProfileResponse], status_code=status.HTTP_201_CREATED)
+# async def create_profile(
+#     profile_data: ProfileCreate,
+#     current_user: User = Depends(get_current_user),
+#     db: AsyncSession = Depends(get_db)
+# ) -> Any:
+#     """
+#     Create a new profile for the current user
+#     """
+#     # Check if profile already exists
+#     existing_profile = await ProfileService.get_profile_by_user_id(db, current_user.id)
+#     if existing_profile:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail="Profile already exists for this user"
+#         )
+#     # Create profile
+#     profile = await ProfileService.create_profile(db, profile_data, current_user.id)
+#     # Add name from user data
+#     response_data = ProfileResponse.model_validate(profile)
+#     response_data.name = f"{current_user.first_name} {current_user.last_name}"
+#     return BaseResponse[
+#         ProfileResponse
+#     ](
+#         success=True,
+#         message="Profile created successfully",
+#         data=response_data
+#     )
 
 
 @router.put("/", response_model=BaseResponse[ProfileResponse])
 async def update_profile(
-    profile_data: ProfileUpdate,
+    date_of_birth: Optional[str] = Form(None),
+    height: Optional[float] = Form(None),
+    height_unit: Optional[str] = Form(None),
+    weight: Optional[float] = Form(None),
+    gender: Optional[str] = Form(None),
+    profile_picture: Optional[UploadFile] = File(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> Any:
     """
-    Update current user's profile
+    Update current user's profile (fields + optional image)
     """
+    # Build the ProfileUpdate Pydantic model
+    profile_data = ProfileUpdate(
+        date_of_birth=date_of_birth,
+        height=height,
+        height_unit=height_unit,
+        weight=weight,
+        gender=gender,
+    )
     # Get existing profile
     profile = await ProfileService.get_profile_by_user_id(db, current_user.id)
     if not profile:
         # If profile doesn't exist, create it
-        profile = await ProfileService.create_profile(db, ProfileCreate(**profile_data.model_dump()), current_user.id)
+        profile = await ProfileService.create_profile(db, profile_data, current_user.id)
         msg = "Profile created successfully"
     else:
-        # Update profile
+        # Handle profile picture
+        if profile_picture:
+            success, message, updated_profile = await ProfileService.update_profile_picture(
+                db=db, file=profile_picture, user_id=current_user.id
+            )
+            if not success:
+                raise HTTPException(status_code=400, detail=message)
+            profile_data.profile_picture_url = updated_profile.profile_picture_url
         profile = await ProfileService.update_profile(db, profile, profile_data)
         msg = "Profile updated successfully"
     # Add name from user data
@@ -135,39 +155,4 @@ async def delete_profile(
     # No content, but for consistency, you could return a message with 204
 
 
-@router.post("/upload-picture", response_model=BaseResponse[ProfilePictureResponse])
-async def upload_profile_picture(
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-) -> Any:
-    """
-    Upload profile picture
-    """
-    # Check file size
-    file.file.seek(0, os.SEEK_END)
-    file_size = file.file.tell()
-    file.file.seek(0)
-    if file_size > settings.MAX_IMAGE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File too large. Maximum size is {settings.MAX_IMAGE_SIZE / (1024 * 1024)}MB"
-        )
-    # Update profile picture
-    success, message, updated_profile = await ProfileService.update_profile_picture(
-        db=db,
-        file=file,
-        user_id=current_user.id
-    )
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=message
-        )
-    return BaseResponse[
-        ProfilePictureResponse
-    ](
-        success=True,
-        message="Profile picture uploaded successfully",
-        data=ProfilePictureResponse(profile_picture_url=updated_profile.profile_picture_url)
-    ) 
+# Remove the /upload-picture endpoint entirely 
