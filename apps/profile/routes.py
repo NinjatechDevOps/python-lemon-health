@@ -3,6 +3,7 @@ import os
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import ValidationError
 
 from apps.auth.deps import get_current_user
 from apps.auth.models import User
@@ -11,6 +12,7 @@ from apps.core.db import get_db
 from apps.profile.models import Profile
 from apps.profile.schemas import ProfileCreate, ProfileResponse, ProfileUpdate, ProfilePictureResponse, BaseResponse
 from apps.profile.services import ProfileService
+from apps.profile.utils import api_response, api_error_response
 
 router = APIRouter()
 
@@ -26,9 +28,7 @@ async def get_my_profile(
     profile = await ProfileService.get_profile_by_user_id(db, current_user.id)
     if not profile:
         # Instead of 404, return a default empty profile with user info
-        return BaseResponse[
-            ProfileResponse
-        ](
+        return api_response(
             success=True,
             message="No profile found. Returning default profile.",
             data=ProfileResponse(
@@ -45,11 +45,12 @@ async def get_my_profile(
             )
         )
     # Add name from user data
-    response_data = ProfileResponse.model_validate(profile)
+    try:
+        response_data = ProfileResponse.model_validate(profile)
+    except ValidationError as e:
+        return api_error_response(status_code=400, message=f"Invalid profile data: {e}")
     response_data.name = f"{current_user.first_name} {current_user.last_name}"
-    return BaseResponse[
-        ProfileResponse
-    ](
+    return api_response(
         success=True,
         message="Profile fetched successfully",
         data=response_data
@@ -121,38 +122,36 @@ async def update_profile(
                 db=db, file=profile_picture, user_id=current_user.id
             )
             if not success:
-                raise HTTPException(status_code=400, detail=message)
+                return api_error_response(status_code=400, message=message)
             profile_data.profile_picture_url = updated_profile.profile_picture_url
         profile = await ProfileService.update_profile(db, profile, profile_data)
         msg = "Profile updated successfully"
     # Add name from user data
-    response_data = ProfileResponse.model_validate(profile)
+    try:
+        response_data = ProfileResponse.model_validate(profile)
+    except ValidationError as e:
+        return api_error_response(status_code=400, message=f"Invalid profile data: {e}")
     response_data.name = f"{current_user.first_name} {current_user.last_name}"
-    return BaseResponse[
-        ProfileResponse
-    ](
+    return api_response(
         success=True,
         message=msg,
         data=response_data
     )
 
 
-@router.delete("/", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/", response_model=dict)
 async def delete_profile(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-) -> None:
+) -> dict:
     """
     Delete current user's profile
     """
     profile = await ProfileService.get_profile_by_user_id(db, current_user.id)
     if not profile:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Profile not found"
-        )
+        return api_error_response(status_code=404, message="Profile not found")
     await ProfileService.delete_profile(db, profile)
-    # No content, but for consistency, you could return a message with 204
+    return api_response(success=True, message="Profile deleted successfully", data={})
 
 
 # Remove the /upload-picture endpoint entirely 

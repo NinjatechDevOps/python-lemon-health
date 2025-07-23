@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import JWTError
+from pydantic import ValidationError
 
 from apps.core.security import create_access_token, create_refresh_token, get_password_hash, verify_password, verify_token
 from apps.core.db import get_db
@@ -17,12 +18,13 @@ from apps.auth.schemas import (
 from apps.auth.services import AuthService
 from apps.auth.twilio_service import twilio_service
 from apps.auth.deps import get_current_verified_user, get_current_user
+from apps.auth.utils import api_response, api_error_response
 
 router = APIRouter()
 user_router = APIRouter()
 
 
-@router.post("/register", response_model=BaseResponse[UserResponse], status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=BaseResponse, status_code=status.HTTP_201_CREATED)
 async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> Any:
     """
     Register a new user
@@ -40,17 +42,17 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> A
         country_code=user_in.country_code
     )
     if existing_user:
-        raise HTTPException(
+        return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with this mobile number and country code already exists"
+            message="User with this mobile number and country code already exists"
         )
     # Check if user with this email already exists
     if user_in.email:
         existing_email_user = await AuthService.get_user_by_email(db, user_in.email)
         if existing_email_user:
-            raise HTTPException(
+            return api_error_response(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User with this email already exists"
+                message="User with this email already exists"
             )
     # Register user and send verification code
     user, otp_sent, message = await AuthService.register_user(
@@ -63,13 +65,8 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> A
         email=user_in.email
     )
     
-    # Always return 201 Created since the user account was created
-    return BaseResponse[
-        UserResponse
-    ](
-        success=True,
-        message="User registered successfully. " + ("Please verify your mobile number." if otp_sent else "Verification code could not be sent. Please use the resend option."),
-        data=UserResponse(
+    try:
+        user_response = UserResponse(
             id=user.id,
             first_name=user.first_name,
             last_name=user.last_name,
@@ -80,10 +77,21 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> A
             is_verified=user.is_verified,
             created_at=user.created_at
         )
+    except ValidationError as e:
+        return api_error_response(
+            message="Invalid user data",
+            status_code=400,
+            data={"errors": e.errors()}
+        )
+    # Always return 201 Created since the user account was created
+    return api_response(
+        success=True,
+        message="User registered successfully. " + ("Please verify your mobile number." if otp_sent else "Verification code could not be sent. Please use the resend option."),
+        data=user_response
     )
 
 
-@router.post("/login", response_model=BaseResponse[Token])
+@router.post("/login", response_model=BaseResponse)
 async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)) -> Any:
     """
     Login with mobile number and password
@@ -102,23 +110,31 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)) -> Any:
     )
     
     if not success:
-        raise HTTPException(
+        return api_error_response(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=result
+            message=result
         )
     
-    return BaseResponse[Token](
-        success=True,
-        message="Login successful",
-        data=Token(
+    try:
+        token_response = Token(
             access_token=result["access_token"],
             refresh_token=result["refresh_token"],
             token_type=result["token_type"]
         )
+    except ValidationError as e:
+        return api_error_response(
+            message="Invalid token data",
+            status_code=400,
+            data={"errors": e.errors()}
+        )
+    return api_response(
+        success=True,
+        message="Login successful",
+        data=token_response
     )
 
 
-@router.post("/verify", response_model=BaseResponse[Token])
+@router.post("/verify", response_model=BaseResponse)
 async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession = Depends(get_db)) -> Any:
     """
     Verify SMS code
@@ -137,23 +153,31 @@ async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession 
     
     if not success:
         # Include the code in the error response for debugging
-        raise HTTPException(
+        return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"{result} (Code: {verification_in.code})"
+            message=f"{result} (Code: {verification_in.code})"
         )
     
-    return BaseResponse[Token](
-        success=True,
-        message="Verification successful",
-        data=Token(
+    try:
+        token_response = Token(
             access_token=result["access_token"],
             refresh_token=result["refresh_token"],
             token_type=result["token_type"]
         )
+    except ValidationError as e:
+        return api_error_response(
+            message="Invalid token data",
+            status_code=400,
+            data={"errors": e.errors()}
+        )
+    return api_response(
+        success=True,
+        message="Verification successful",
+        data=token_response
     )
 
 
-@router.post("/resend-verification", response_model=BaseResponse[dict])
+@router.post("/resend-verification", response_model=BaseResponse)
 async def resend_verification(verification_in: VerificationRequest, db: AsyncSession = Depends(get_db)) -> Any:
     """
     Resend verification code
@@ -170,16 +194,16 @@ async def resend_verification(verification_in: VerificationRequest, db: AsyncSes
     )
     
     if not user:
-        raise HTTPException(
+        return api_error_response(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            message="User not found"
         )
     
     # Check if user is already verified
     if user.is_verified:
-        raise HTTPException(
+        return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User is already verified"
+            message="User is already verified"
         )
     
     # Send verification code
@@ -192,7 +216,7 @@ async def resend_verification(verification_in: VerificationRequest, db: AsyncSes
     )
     
     # Always return 200 OK since the request was processed
-    return BaseResponse[dict](
+    return api_response(
         success=True,
         message="Verification code request processed",
         data={
@@ -202,7 +226,7 @@ async def resend_verification(verification_in: VerificationRequest, db: AsyncSes
     )
 
 
-@router.post("/forgot-password", response_model=BaseResponse[dict])
+@router.post("/forgot-password", response_model=BaseResponse)
 async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)) -> Any:
     """
     Request password reset
@@ -219,9 +243,9 @@ async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = 
     )
     
     if not user:
-        raise HTTPException(
+        return api_error_response(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            message="User not found"
         )
     
     # Send verification code
@@ -234,7 +258,7 @@ async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = 
     )
     
     # Always return 200 OK since the request was processed
-    return BaseResponse[dict](
+    return api_response(
         success=True,
         message="Password reset request processed",
         data={
@@ -244,7 +268,7 @@ async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = 
     )
 
 
-@router.post("/reset-password", response_model=BaseResponse[dict])
+@router.post("/reset-password", response_model=BaseResponse)
 async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depends(get_db)) -> Any:
     """
     Reset password with verification code
@@ -262,9 +286,9 @@ async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depe
     )
     
     if not user:
-        raise HTTPException(
+        return api_error_response(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            message="User not found"
         )
     
     # Verify code
@@ -278,15 +302,15 @@ async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depe
     )
     
     if not success:
-        raise HTTPException(
+        return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=message
+            message=message
         )
     
     # Update password
     await AuthService.update_password(db, user, reset_in.new_password)
     
-    return BaseResponse[dict](
+    return api_response(
         success=True,
         message="Password reset successfully",
         data={
@@ -295,7 +319,7 @@ async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depe
     )
 
 
-@router.post("/refresh-token", response_model=BaseResponse[Token])
+@router.post("/refresh-token", response_model=BaseResponse)
 async def refresh_token(token_data: RefreshToken, db: AsyncSession = Depends(get_db)) -> Any:
     """
     Get a new access token using a refresh token
@@ -310,23 +334,31 @@ async def refresh_token(token_data: RefreshToken, db: AsyncSession = Depends(get
     )
     
     if not success:
-        raise HTTPException(
+        return api_error_response(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=result
+            message=result
         )
     
-    return BaseResponse[Token](
-        success=True,
-        message="Token refreshed successfully",
-        data=Token(
+    try:
+        token_response = Token(
             access_token=result["access_token"],
             refresh_token=result["refresh_token"],
             token_type=result["token_type"]
         )
+    except ValidationError as e:
+        return api_error_response(
+            message="Invalid token data",
+            status_code=400,
+            data={"errors": e.errors()}
+        )
+    return api_response(
+        success=True,
+        message="Token refreshed successfully",
+        data=token_response
     )
 
 
-@router.post("/change-password", response_model=BaseResponse[dict])
+@router.post("/change-password", response_model=BaseResponse)
 async def change_password(
     password_data: ChangePasswordRequest,
     current_user: Annotated[User, Depends(get_current_verified_user)],
@@ -341,15 +373,15 @@ async def change_password(
     """
     # Verify current password
     if not verify_password(password_data.current_password, current_user.hashed_password):
-        raise HTTPException(
+        return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Incorrect current password"
+            message="Incorrect current password"
         )
     
     # Update password
     await AuthService.update_password(db, current_user, password_data.new_password)
     
-    return BaseResponse[dict](
+    return api_response(
         success=True,
         message="Password changed successfully",
         data={
@@ -357,7 +389,7 @@ async def change_password(
         }
     )
 
-@router.post("/logout", response_model=BaseResponse[dict])
+@router.post("/logout", response_model=BaseResponse)
 async def logout(
     logout_data: LogoutRequest,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -375,12 +407,12 @@ async def logout(
     )
     
     if not success:
-        raise HTTPException(
+        return api_error_response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to logout"
+            message="Failed to logout"
         )
     
-    return BaseResponse[dict](
+    return api_response(
         success=True,
         message="Successfully logged out",
         data={

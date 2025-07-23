@@ -10,6 +10,7 @@ from apps.core.db import get_db
 from apps.core.config import settings
 from apps.core.security import verify_token
 from apps.auth.models import User
+from apps.auth.utils import api_error_response
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -22,8 +23,7 @@ async def get_current_user(
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
+        detail={"success": False, "message": "Could not validate credentials", "data": {}}
     )
     
     try:
@@ -44,7 +44,7 @@ async def get_current_user(
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inactive user"
+            detail={"success": False, "message": "Inactive user", "data": {}}
         )
     
     return user
@@ -59,7 +59,7 @@ async def get_current_verified_user(
     if not current_user.is_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="User not verified"
+            detail={"success": False, "message": "User not verified", "data": {}}
         )
     
     return current_user 
