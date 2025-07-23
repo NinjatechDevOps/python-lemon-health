@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import Optional, Generic, TypeVar
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, EmailStr
+import re
 
 T = TypeVar("T")
 
@@ -15,22 +16,41 @@ class UserBase(BaseModel):
     """Base user schema with common attributes"""
     first_name: str = Field(..., min_length=1, max_length=50)
     last_name: str = Field(..., min_length=1, max_length=50)
-    mobile_number: str = Field(..., min_length=5, max_length=15)
-    country_code: str = Field("+34", min_length=2, max_length=5)  # Default to Spain (+34)
-    email: Optional[str] = None
+    mobile_number: str = Field(
+        ..., 
+        min_length=7, 
+        max_length=15, 
+        description="Mobile number must be between 7 and 15 digits"
+    )
+    country_code: str = Field(
+        "+34", 
+        min_length=2, 
+        max_length=5,
+        pattern=r"^\+[0-9]{1,4}$",
+        description="Country code must start with + followed by 1-4 digits"
+    )  # Default to Spain (+34)
+    email: Optional[EmailStr] = None
 
-
-class UserCreate(UserBase):
-    """Schema for user registration"""
-    password: str = Field(..., min_length=8, max_length=16, description="Password must be 8-16 characters")
-    
     @validator('mobile_number')
     def validate_mobile_number(cls, v):
         # Remove any spaces or special characters
         v = ''.join(filter(str.isdigit, v))
         if not v:
             raise ValueError('Mobile number must contain digits')
+        if not re.match(r'^[0-9]{7,15}$', v):
+            raise ValueError('Mobile number must be between 7 and 15 digits')
         return v
+
+    @validator('country_code')
+    def validate_country_code(cls, v):
+        if not re.match(r'^\+[0-9]{1,4}$', v):
+            raise ValueError('Country code must start with + followed by 1-4 digits')
+        return v
+
+
+class UserCreate(UserBase):
+    """Schema for user registration"""
+    password: str = Field(..., min_length=8, max_length=16, description="Password must be 8-16 characters")
     
     @validator('password')
     def validate_password(cls, v):
@@ -49,8 +69,19 @@ class UserCreate(UserBase):
 
 class UserLogin(BaseModel):
     """Schema for user login"""
-    mobile_number: str = Field(..., min_length=5, max_length=15)
-    country_code: str = Field("+34", min_length=2, max_length=5)  # Default to Spain (+34)
+    mobile_number: str = Field(
+        ..., 
+        min_length=7, 
+        max_length=15, 
+        description="Mobile number must be between 7 and 15 digits"
+    )
+    country_code: str = Field(
+        "+34", 
+        min_length=2, 
+        max_length=5,
+        pattern=r"^\+[0-9]{1,4}$",
+        description="Country code must start with + followed by 1-4 digits"
+    )  # Default to Spain (+34)
     password: str = Field(..., min_length=1)
     
     @validator('mobile_number')
@@ -59,13 +90,32 @@ class UserLogin(BaseModel):
         v = ''.join(filter(str.isdigit, v))
         if not v:
             raise ValueError('Mobile number must contain digits')
+        if not re.match(r'^[0-9]{7,15}$', v):
+            raise ValueError('Mobile number must be between 7 and 15 digits')
+        return v
+
+    @validator('country_code')
+    def validate_country_code(cls, v):
+        if not re.match(r'^\+[0-9]{1,4}$', v):
+            raise ValueError('Country code must start with + followed by 1-4 digits')
         return v
 
 
 class VerificationRequest(BaseModel):
     """Schema for verification code request"""
-    mobile_number: str = Field(..., min_length=5, max_length=15)
-    country_code: str = Field("+34", min_length=2, max_length=5)  # Default to Spain (+34)
+    mobile_number: str = Field(
+        ..., 
+        min_length=7, 
+        max_length=15, 
+        description="Mobile number must be between 7 and 15 digits"
+    )
+    country_code: str = Field(
+        "+34", 
+        min_length=2, 
+        max_length=5,
+        pattern=r"^\+[0-9]{1,4}$",
+        description="Country code must start with + followed by 1-4 digits"
+    )  # Default to Spain (+34)
     
     @validator('mobile_number')
     def validate_mobile_number(cls, v):
@@ -73,14 +123,33 @@ class VerificationRequest(BaseModel):
         v = ''.join(filter(str.isdigit, v))
         if not v:
             raise ValueError('Mobile number must contain digits')
+        if not re.match(r'^[0-9]{7,15}$', v):
+            raise ValueError('Mobile number must be between 7 and 15 digits')
+        return v
+
+    @validator('country_code')
+    def validate_country_code(cls, v):
+        if not re.match(r'^\+[0-9]{1,4}$', v):
+            raise ValueError('Country code must start with + followed by 1-4 digits')
         return v
 
 
 class VerificationCodeSubmit(BaseModel):
     """Schema for submitting verification code"""
-    mobile_number: str = Field(..., min_length=5, max_length=15)
-    country_code: str = Field("+34", min_length=2, max_length=5)  # Default to Spain (+34)
-    code: str = Field(..., min_length=6, max_length=6)
+    mobile_number: str = Field(
+        ..., 
+        min_length=7, 
+        max_length=15, 
+        description="Mobile number must be between 7 and 15 digits"
+    )
+    country_code: str = Field(
+        "+34", 
+        min_length=2, 
+        max_length=5,
+        pattern=r"^\+[0-9]{1,4}$",
+        description="Country code must start with + followed by 1-4 digits"
+    )  # Default to Spain (+34)
+    code: str = Field(..., min_length=6, max_length=6, pattern=r"^[0-9]{6}$", description="6-digit verification code")
     
     @validator('mobile_number')
     def validate_mobile_number(cls, v):
@@ -88,13 +157,38 @@ class VerificationCodeSubmit(BaseModel):
         v = ''.join(filter(str.isdigit, v))
         if not v:
             raise ValueError('Mobile number must contain digits')
+        if not re.match(r'^[0-9]{7,15}$', v):
+            raise ValueError('Mobile number must be between 7 and 15 digits')
+        return v
+
+    @validator('country_code')
+    def validate_country_code(cls, v):
+        if not re.match(r'^\+[0-9]{1,4}$', v):
+            raise ValueError('Country code must start with + followed by 1-4 digits')
+        return v
+
+    @validator('code')
+    def validate_code(cls, v):
+        if not re.match(r'^[0-9]{6}$', v):
+            raise ValueError('Verification code must be 6 digits')
         return v
 
 
 class ForgotPasswordRequest(BaseModel):
     """Schema for forgot password request"""
-    mobile_number: str = Field(..., min_length=5, max_length=15)
-    country_code: str = Field("+34", min_length=2, max_length=5)  # Default to Spain (+34)
+    mobile_number: str = Field(
+        ..., 
+        min_length=7, 
+        max_length=15, 
+        description="Mobile number must be between 7 and 15 digits"
+    )
+    country_code: str = Field(
+        "+34", 
+        min_length=2, 
+        max_length=5,
+        pattern=r"^\+[0-9]{1,4}$",
+        description="Country code must start with + followed by 1-4 digits"
+    )  # Default to Spain (+34)
     
     @validator('mobile_number')
     def validate_mobile_number(cls, v):
@@ -102,14 +196,33 @@ class ForgotPasswordRequest(BaseModel):
         v = ''.join(filter(str.isdigit, v))
         if not v:
             raise ValueError('Mobile number must contain digits')
+        if not re.match(r'^[0-9]{7,15}$', v):
+            raise ValueError('Mobile number must be between 7 and 15 digits')
+        return v
+
+    @validator('country_code')
+    def validate_country_code(cls, v):
+        if not re.match(r'^\+[0-9]{1,4}$', v):
+            raise ValueError('Country code must start with + followed by 1-4 digits')
         return v
 
 
 class ResetPasswordRequest(BaseModel):
     """Schema for password reset"""
-    mobile_number: str = Field(..., min_length=5, max_length=15)
-    country_code: str = Field("+34", min_length=2, max_length=5)  # Default to Spain (+34)
-    code: str = Field(..., min_length=6, max_length=6)
+    mobile_number: str = Field(
+        ..., 
+        min_length=7, 
+        max_length=15, 
+        description="Mobile number must be between 7 and 15 digits"
+    )
+    country_code: str = Field(
+        "+34", 
+        min_length=2, 
+        max_length=5,
+        pattern=r"^\+[0-9]{1,4}$",
+        description="Country code must start with + followed by 1-4 digits"
+    )  # Default to Spain (+34)
+    code: str = Field(..., min_length=6, max_length=6, pattern=r"^[0-9]{6}$", description="6-digit verification code")
     new_password: str = Field(..., min_length=8, max_length=16, description="Password must be 8-16 characters")
     
     @validator('mobile_number')
@@ -118,6 +231,20 @@ class ResetPasswordRequest(BaseModel):
         v = ''.join(filter(str.isdigit, v))
         if not v:
             raise ValueError('Mobile number must contain digits')
+        if not re.match(r'^[0-9]{7,15}$', v):
+            raise ValueError('Mobile number must be between 7 and 15 digits')
+        return v
+
+    @validator('country_code')
+    def validate_country_code(cls, v):
+        if not re.match(r'^\+[0-9]{1,4}$', v):
+            raise ValueError('Country code must start with + followed by 1-4 digits')
+        return v
+        
+    @validator('code')
+    def validate_code(cls, v):
+        if not re.match(r'^[0-9]{6}$', v):
+            raise ValueError('Verification code must be 6 digits')
         return v
     
     @validator('new_password')
