@@ -104,7 +104,7 @@ class AuthService:
             email: User's email (optional)
             
         Returns:
-            Tuple of (user, success, message)
+            Tuple of (user, otp_sent, message)
         """
         # Create new user with unverified status
         user = User(
@@ -123,7 +123,7 @@ class AuthService:
         await db.refresh(user)
         
         # Send verification code
-        success, message = await twilio_service.create_verification_code(
+        otp_sent, message = await twilio_service.create_verification_code(
             db=db,
             verification_type=VerificationType.SIGNUP,
             mobile_number=user.mobile_number,
@@ -131,7 +131,7 @@ class AuthService:
             user_id=user.id
         )
         
-        return user, success, message
+        return user, otp_sent, message
     
     @staticmethod
     async def login_user(
@@ -240,55 +240,64 @@ class AuthService:
     ) -> Tuple[bool, Any]:
         """
         Get new tokens using a refresh token
-        
+
         Returns:
             Tuple of (success, token_data or error_message)
         """
         from apps.core.security import verify_token
-        
+
         try:
+            print("DEBUG: Received refresh_token:", refresh_token)
             # Verify the refresh token
-            payload = verify_token(refresh_token)
-            
+            payload = await verify_token(refresh_token)
+            print("DEBUG: Decoded payload:", payload)
+
             # Check if it's actually a refresh token
             if payload.get("token_type") != "refresh":
+                print("DEBUG: Not a refresh token, payload:", payload)
                 return False, "Invalid token type"
-            
+
             # Get user ID from token
             user_id = payload.get("sub")
             if not user_id:
+                print("DEBUG: No user_id in payload:", payload)
                 return False, "Invalid token"
-            
+
             # Get user from database
             user = await AuthService.get_user_by_id(db, int(user_id))
-            
+            print("DEBUG: User from DB:", user)
+
             if not user:
+                print("DEBUG: User not found for user_id:", user_id)
                 return False, "User not found"
-            
+
             # Check if user is active
             if not user.is_active:
+                print("DEBUG: User is not active:", user_id)
                 return False, "Inactive user"
-            
+
             # Generate new access token
             new_access_token = create_access_token(
                 subject=str(user.id),
                 extra_data={"is_verified": user.is_verified}
             )
-            
+
             # Generate new refresh token
             new_refresh_token = create_refresh_token(
                 subject=str(user.id)
             )
-            
+
+            print("DEBUG: New tokens generated for user_id:", user_id)
             return True, {
                 "access_token": new_access_token,
                 "refresh_token": new_refresh_token,
                 "token_type": "bearer"
             }
-            
-        except JWTError:
-            return False, "Invalid refresh token"
 
+        except Exception as e:
+            print("DEBUG: Exception in refresh_token:", str(e))
+            return False, "Invalid refresh token"
+    
     @staticmethod
     async def logout_user(access_token: str, refresh_token: Optional[str] = None) -> bool:
         """

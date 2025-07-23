@@ -58,22 +58,22 @@ class TwilioService:
             # Handle specific Twilio error codes
             if error_code == 20003:
                 print(f"Twilio authentication error: {error_msg}")
-                return False, "SMS service authentication failed. Please contact support."
+                return False, "Verification code created but SMS delivery failed. You can request a new code."
             elif error_code == 21211:
                 print(f"Invalid phone number: {error_msg}")
-                return False, "Invalid phone number format"
+                return False, "Invalid phone number format. Please check your number and try again."
             elif error_code == 21608:
                 print(f"Unverified phone number: {error_msg}")
-                return False, "This phone number is not verified with our SMS service"
+                return False, "This phone number is not verified with our SMS service. Please contact support."
             elif error_code == 21610:
                 print(f"Message body too long: {error_msg}")
-                return False, "Message content too long"
+                return False, "Verification code created but SMS delivery failed. You can request a new code."
             else:
                 print(f"Twilio error {error_code}: {error_msg}")
-                return False, "Failed to send SMS. Please try again later."
+                return False, "Verification code created but SMS delivery failed. You can request a new code."
         except Exception as e:
             print(f"Unexpected error sending SMS: {str(e)}")
-            return False, "An unexpected error occurred while sending SMS"
+            return False, "Verification code created but SMS delivery failed. You can request a new code."
     
     async def create_verification_code(
         self, 

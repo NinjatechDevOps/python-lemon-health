@@ -12,7 +12,7 @@ from apps.auth.models import User, VerificationType
 from apps.auth.schemas import (
     ChangePasswordRequest, ForgotPasswordRequest, ResetPasswordRequest, Token, UserCreate, 
     UserLogin, UserResponse, VerificationCodeSubmit, VerificationRequest,
-    RefreshToken, LogoutRequest
+    RefreshToken, LogoutRequest, BaseResponse
 )
 from apps.auth.services import AuthService
 from apps.auth.twilio_service import twilio_service
@@ -22,7 +22,7 @@ router = APIRouter()
 user_router = APIRouter()
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=BaseResponse[UserResponse], status_code=status.HTTP_201_CREATED)
 async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> Any:
     """
     Register a new user
@@ -47,7 +47,7 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> A
         )
     
     # Register user and send verification code
-    user, success, message = await AuthService.register_user(
+    user, otp_sent, message = await AuthService.register_user(
         db=db,
         first_name=user_in.first_name,
         last_name=user_in.last_name,
@@ -57,23 +57,27 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> A
         email=user_in.email
     )
     
-    response = {
-        "id": user.id,
-        "success": success,
-        "require_verification": True
-    }
-    
-    if not success:
-        # If SMS fails, still return success but with the error message
-        response["message"] = message
-        response["fallback"] = "If you don't receive the code, you can request a new one."
-    else:
-        response["message"] = "User registered successfully. Please verify your mobile number."
-    
-    return response
+    # Always return 201 Created since the user account was created
+    return BaseResponse[
+        UserResponse
+    ](
+        success=True,
+        message="User registered successfully. " + ("Please verify your mobile number." if otp_sent else "Verification code could not be sent. Please use the resend option."),
+        data=UserResponse(
+            id=user.id,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            mobile_number=user.mobile_number,
+            country_code=user.country_code,
+            email=user.email,
+            is_active=user.is_active,
+            is_verified=user.is_verified,
+            created_at=user.created_at
+        )
+    )
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=BaseResponse[Token])
 async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)) -> Any:
     """
     Login with mobile number and password
@@ -97,10 +101,18 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)) -> Any:
             detail=result
         )
     
-    return result
+    return BaseResponse[Token](
+        success=True,
+        message="Login successful",
+        data=Token(
+            access_token=result["access_token"],
+            refresh_token=result["refresh_token"],
+            token_type=result["token_type"]
+        )
+    )
 
 
-@router.post("/verify")
+@router.post("/verify", response_model=BaseResponse[Token])
 async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession = Depends(get_db)) -> Any:
     """
     Verify SMS code
@@ -124,10 +136,18 @@ async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession 
             detail=f"{result} (Code: {verification_in.code})"
         )
     
-    return result
+    return BaseResponse[Token](
+        success=True,
+        message="Verification successful",
+        data=Token(
+            access_token=result["access_token"],
+            refresh_token=result["refresh_token"],
+            token_type=result["token_type"]
+        )
+    )
 
 
-@router.post("/resend-verification")
+@router.post("/resend-verification", response_model=BaseResponse[dict])
 async def resend_verification(verification_in: VerificationRequest, db: AsyncSession = Depends(get_db)) -> Any:
     """
     Resend verification code
@@ -157,7 +177,7 @@ async def resend_verification(verification_in: VerificationRequest, db: AsyncSes
         )
     
     # Send verification code
-    success, message = await twilio_service.create_verification_code(
+    otp_sent, message = await twilio_service.create_verification_code(
         db=db,
         verification_type=VerificationType.SIGNUP,
         mobile_number=user.mobile_number,
@@ -165,18 +185,18 @@ async def resend_verification(verification_in: VerificationRequest, db: AsyncSes
         user_id=user.id
     )
     
-    if not success:
-        # Return 200 with error message instead of 500
-        return {
-            "success": False,
-            "message": message,
-            "fallback": "If you don't receive the code, please contact support."
+    # Always return 200 OK since the request was processed
+    return BaseResponse[dict](
+        success=True,
+        message="Verification code request processed",
+        data={
+            "otp_sent": otp_sent,
+            "otp_message": None if otp_sent else message
         }
-    
-    return {"success": True, "message": "Verification code sent successfully"}
+    )
 
 
-@router.post("/forgot-password")
+@router.post("/forgot-password", response_model=BaseResponse[dict])
 async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)) -> Any:
     """
     Request password reset
@@ -199,7 +219,7 @@ async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = 
         )
     
     # Send verification code
-    success, message = await twilio_service.create_verification_code(
+    otp_sent, message = await twilio_service.create_verification_code(
         db=db,
         verification_type=VerificationType.PASSWORD_RESET,
         mobile_number=user.mobile_number,
@@ -207,20 +227,18 @@ async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = 
         user_id=user.id
     )
     
-    if not success:
-        # Return 200 with error message instead of 500
-        # This is because the verification code was created in the database
-        # but the SMS delivery failed
-        return {
-            "success": False,
-            "message": message,
-            "fallback": "If you don't receive the code, please contact support."
+    # Always return 200 OK since the request was processed
+    return BaseResponse[dict](
+        success=True,
+        message="Password reset request processed",
+        data={
+            "otp_sent": otp_sent,
+            "otp_message": None if otp_sent else message
         }
-    
-    return {"success": True, "message": "Password reset code sent successfully"}
+    )
 
 
-@router.post("/reset-password")
+@router.post("/reset-password", response_model=BaseResponse[dict])
 async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depends(get_db)) -> Any:
     """
     Reset password with verification code
@@ -262,10 +280,16 @@ async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depe
     # Update password
     await AuthService.update_password(db, user, reset_in.new_password)
     
-    return {"message": "Password reset successfully"}
+    return BaseResponse[dict](
+        success=True,
+        message="Password reset successfully",
+        data={
+            "user_id": user.id
+        }
+    )
 
 
-@router.post("/refresh-token", response_model=Token)
+@router.post("/refresh-token", response_model=BaseResponse[Token])
 async def refresh_token(token_data: RefreshToken, db: AsyncSession = Depends(get_db)) -> Any:
     """
     Get a new access token using a refresh token
@@ -285,10 +309,18 @@ async def refresh_token(token_data: RefreshToken, db: AsyncSession = Depends(get
             detail=result
         )
     
-    return result
+    return BaseResponse[Token](
+        success=True,
+        message="Token refreshed successfully",
+        data=Token(
+            access_token=result["access_token"],
+            refresh_token=result["refresh_token"],
+            token_type=result["token_type"]
+        )
+    )
 
 
-@router.post("/change-password")
+@router.post("/change-password", response_model=BaseResponse[dict])
 async def change_password(
     password_data: ChangePasswordRequest,
     current_user: Annotated[User, Depends(get_current_verified_user)],
@@ -311,9 +343,15 @@ async def change_password(
     # Update password
     await AuthService.update_password(db, current_user, password_data.new_password)
     
-    return {"message": "Password changed successfully"}
+    return BaseResponse[dict](
+        success=True,
+        message="Password changed successfully",
+        data={
+            "user_id": current_user.id
+        }
+    )
 
-@router.post("/logout")
+@router.post("/logout", response_model=BaseResponse[dict])
 async def logout(
     logout_data: LogoutRequest,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -336,5 +374,11 @@ async def logout(
             detail="Failed to logout"
         )
     
-    return {"message": "Successfully logged out"}
+    return BaseResponse[dict](
+        success=True,
+        message="Successfully logged out",
+        data={
+            "user_id": current_user.id
+        }
+    )
 

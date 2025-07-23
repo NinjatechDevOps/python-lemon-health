@@ -1,7 +1,14 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Generic, TypeVar
 
 from pydantic import BaseModel, Field, validator
+
+T = TypeVar("T")
+
+class BaseResponse(BaseModel, Generic[T]):
+    success: bool
+    message: str
+    data: Optional[T] = None
 
 
 class UserBase(BaseModel):

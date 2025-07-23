@@ -1,8 +1,14 @@
 from datetime import date
-from typing import Optional
+from typing import Optional, Generic, TypeVar
 
 from pydantic import BaseModel, Field, validator
 
+T = TypeVar("T")
+
+class BaseResponse(BaseModel, Generic[T]):
+    success: bool
+    message: str
+    data: Optional[T] = None
 
 class ProfileBase(BaseModel):
     """Base schema for profile data"""
@@ -32,21 +38,17 @@ class ProfileBase(BaseModel):
             raise ValueError('Gender must be either "Male", "Female", or "Other"')
         return v
 
-
 class ProfileCreate(ProfileBase):
     """Schema for creating a profile"""
     pass
-
 
 class ProfileUpdate(ProfileBase):
     """Schema for updating a profile"""
     pass
 
-
 class ProfilePictureResponse(BaseModel):
     """Schema for profile picture upload response"""
     profile_picture_url: str
-
 
 class ProfileResponse(ProfileBase):
     """Schema for profile response"""
