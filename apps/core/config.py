@@ -30,12 +30,19 @@ class Settings(BaseSettings):
     TWILIO_ACCOUNT_SID: str
     TWILIO_AUTH_TOKEN: str
     TWILIO_PHONE_NUMBER: str  
-    
-    # Setting these as optional with default values
     TWILIO_VERIFY_SERVICE_SID: str
-    
-    # VERIFICATION
     VERIFICATION_CODE_EXPIRY_SECONDS: int = 300  # 5 minutes
+    
+    #llm privider and API key
+    LLM_PROVIDER: str 
+    OPENAI_API_KEY: str
+    GROQ_API_KEY: str
+    GOOGLE_API_KEY: str
+    
+    # llm model
+    OPENAI_MODEL: str
+    GROQ_MODEL: str
+    GOOGLE_MODEL: str
     
     # MEDIA STORAGE
     MEDIA_ROOT: str = str(Path("media").absolute())
