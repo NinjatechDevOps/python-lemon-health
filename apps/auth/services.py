@@ -151,7 +151,7 @@ class AuthService:
         Login a user
         
         Returns:
-            Tuple of (success, token_data or error_message)
+            Tuple of (success, token_data or error_message or user_data)
         """
         # Find user by mobile number
         user = await AuthService.get_user_by_mobile(db, mobile_number, country_code)
@@ -164,9 +164,25 @@ class AuthService:
         if not user.is_active:
             return False, "Inactive user"
         
+        # Create user response data with datetime converted to ISO format strings
+        user_data = {
+            "id": user.id,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "mobile_number": user.mobile_number,
+            "country_code": user.country_code,
+            "email": user.email,
+            "is_active": user.is_active,
+            "is_verified": user.is_verified,
+            "created_at": user.created_at.isoformat() if user.created_at else None
+        }
+        
         # Check if user is verified
         if not user.is_verified:
-            return False, "Mobile number not verified. Please verify your mobile number first."
+            return False, {
+                "message": "Mobile number not verified. Please verify your mobile number first.",
+                "user": user_data
+            }
         
         # Generate access token
         access_token = create_access_token(
@@ -183,7 +199,7 @@ class AuthService:
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "bearer",
-            "user_id": user.id
+            "user": user_data
         }
     
     @staticmethod
@@ -221,6 +237,19 @@ class AuthService:
         # Mark user as verified
         await AuthService.verify_user(db, user)
         
+        # Create user response data with datetime converted to ISO format strings
+        user_data = {
+            "id": user.id,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "mobile_number": user.mobile_number,
+            "country_code": user.country_code,
+            "email": user.email,
+            "is_active": user.is_active,
+            "is_verified": user.is_verified,
+            "created_at": user.created_at.isoformat() if user.created_at else None
+        }
+        
         # Generate access token
         access_token = create_access_token(
             subject=str(user.id),
@@ -237,7 +266,7 @@ class AuthService:
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "bearer",
-            "user_id": user.id
+            "user": user_data
         }
     
     @staticmethod

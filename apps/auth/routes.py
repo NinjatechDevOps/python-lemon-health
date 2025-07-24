@@ -44,7 +44,7 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> A
     if existing_user:
         return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            message="User with this mobile number and country code already exists"
+            message="Looks like this number is already in use. Try logging in instead."
         )
     # Check if user with this email already exists
     if user_in.email:
@@ -110,6 +110,14 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)) -> Any:
     )
     
     if not success:
+        # Check if result is a dict with message and user data (unverified user case)
+        if isinstance(result, dict) and "message" in result and "user" in result:
+            return api_error_response(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                message=result["message"],
+                data={"user": result["user"]}
+            )
+        # Otherwise, it's a simple error message
         return api_error_response(
             status_code=status.HTTP_401_UNAUTHORIZED,
             message=result
@@ -121,16 +129,23 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)) -> Any:
             refresh_token=result["refresh_token"],
             token_type=result["token_type"]
         )
+        
+        # Include user data in the response
+        response_data = {
+            "token": token_response.model_dump(),  # Use model_dump() for Pydantic v2 compatibility
+            "user": result["user"]
+        }
     except ValidationError as e:
         return api_error_response(
             message="Invalid token data",
             status_code=400,
             data={"errors": e.errors()}
         )
+    
     return api_response(
         success=True,
         message="Login successful",
-        data=token_response
+        data=response_data
     )
 
 
@@ -164,6 +179,12 @@ async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession 
             refresh_token=result["refresh_token"],
             token_type=result["token_type"]
         )
+        
+        # Include user data in the response
+        response_data = {
+            "token": token_response.model_dump(),  # Use model_dump() for Pydantic v2 compatibility
+            "user": result["user"]
+        }
     except ValidationError as e:
         return api_error_response(
             message="Invalid token data",
@@ -173,7 +194,7 @@ async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession 
     return api_response(
         success=True,
         message="Verification successful",
-        data=token_response
+        data=response_data
     )
 
 
