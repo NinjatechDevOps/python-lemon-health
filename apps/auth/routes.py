@@ -110,12 +110,26 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)) -> Any:
     )
     
     if not success:
-        # Check if result is a dict with message and user data (unverified user case)
+        # If user is unverified, resend OTP and return 200 with user object and OTP status
         if isinstance(result, dict) and "message" in result and "user" in result:
-            return api_error_response(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+            user = await AuthService.get_user_by_mobile(db, user_in.mobile_number, user_in.country_code)
+            otp_sent, otp_message = False, "Could not send OTP"
+            if user:
+                otp_sent, otp_message = await twilio_service.create_verification_code(
+                    db=db,
+                    verification_type=VerificationType.SIGNUP,
+                    mobile_number=user.mobile_number,
+                    country_code=user.country_code,
+                    user_id=user.id
+                )
+            return api_response(
+                success=False,
                 message=result["message"],
-                data={"user": result["user"]}
+                data={
+                    "user": result["user"],
+                    "otp_sent": otp_sent,
+                    "otp_message": otp_message
+                }
             )
         # Otherwise, it's a simple error message
         return api_error_response(
