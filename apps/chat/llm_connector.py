@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from apps.llm.factory import get_llm_provider
 
@@ -20,22 +20,35 @@ except Exception as e:
     logger.info("Falling back to OpenAI LLM provider")
 
 
-async def process_query(query: str, user) -> str:
+async def process_query_with_prompt(
+    user_message: str, 
+    system_prompt: str, 
+    conversation_history: List[Dict[str, str]],
+    user
+) -> str:
     """
-    Process a user query through the LLM and return the response
+    Process a user query with a specific prompt and conversation history
     
     Args:
-        query: The user's query text
+        user_message: The user's message text
+        system_prompt: The system prompt to use
+        conversation_history: Previous messages in the conversation
         user: The user object
         
     Returns:
         The LLM's response text
     """
-    # Create a simple message format for the LLM
+    # Create messages array with system prompt and conversation history
     messages = [
-        {"role": "system", "content": f"You are a helpful health assistant named Lemon. The user is {user.first_name} {user.last_name}."},
-        {"role": "user", "content": query}
+        {"role": "system", "content": system_prompt}
     ]
+    
+    # Add conversation history if available
+    if conversation_history:
+        messages.extend(conversation_history)
+    
+    # Add the current user message
+    messages.append({"role": "user", "content": user_message})
     
     # Process the query through the LLM provider
     try:
