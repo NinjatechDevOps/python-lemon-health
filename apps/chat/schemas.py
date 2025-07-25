@@ -1,82 +1,60 @@
-from datetime import datetime
-from typing import Optional, Generic, TypeVar, List, Dict, Any, Union
+from typing import Optional, Generic, TypeVar, List
+from enum import Enum
+from pydantic import BaseModel
 
-from pydantic import BaseModel, Field
+class PromptType(str, Enum):
+    BOOKING = "booking"
+    SHOP = "shop"
+    NUTRITION = "nutrition"
+    EXERCISE = "exercise"
+    DOCUMENTS = "documents"
+    PRESCRIPTIONS = "prescriptions"
 
-from apps.chat.models import QueryType
+class ChatRole(str, Enum):
+    USER = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
 
-
-class ChatMessageCreate(BaseModel):
-    """Schema for creating a new chat message"""
-    query: str
-
-
-class ChatMessageResponse(BaseModel):
-    """Schema for chat message response"""
+class PromptResponse(BaseModel):
     id: int
-    query: str
-    response: str
-    query_type: QueryType
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True
+    name: str
+    description: Optional[str] = None
+    prompt_type: PromptType
 
+class PromptListResponse(BaseModel):
+    prompts: List[PromptResponse]
 
-class ChatHistoryItem(BaseModel):
-    """Schema for chat history item"""
-    id: int
-    query: str
-    query_type: QueryType
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True
-
-
-class ChatHistoryResponse(BaseModel):
-    """Schema for chat history response"""
-    messages: List[ChatHistoryItem]
-
-
-# Base response model for standardized API responses
 T = TypeVar('T')
-
 class BaseResponse(BaseModel, Generic[T]):
-    """Base response model with standardized format"""
     success: bool
     message: str
     data: Optional[T] = None
 
+class ConversationResponse(BaseModel):
+    chat_id: str
+    prompt_id: int
+    created_at: str
+    updated_at: str
 
-# Specific response models for nutrition and exercise
-class NutritionPlanResponse(BaseModel):
-    """Schema for nutrition plan response"""
-    plan: str
-    recommendations: List[str]
-    daily_calories: Optional[int] = None
-    macros: Optional[Dict[str, Any]] = None
+class ChatMessageResponse(BaseModel):
+    id: int
+    role: ChatRole
+    content: str
+    created_at: str
 
-
-class ExercisePlanResponse(BaseModel):
-    """Schema for exercise plan response"""
-    plan: str
-    recommendations: List[str]
-    weekly_schedule: Optional[List[Dict[str, Any]]] = None
-
-
-class UserQueryResponse(BaseModel):
-    """Schema for general user query response"""
-    response: str
-    requires_profile_completion: bool = False
-    required_fields: Optional[List[str]] = None 
-
+class ChatHistoryResponse(BaseModel):
+    chat_id: str
+    messages: List[ChatMessageResponse]
+    title: str | None = None
 
 class ChatRequest(BaseModel):
-    """Schema for chat request"""
-    query: str
-
+    chat_id: str
+    prompt_id: str
+    user_query: str
+    streamed: Optional[bool] = False
 
 class ChatResponse(BaseModel):
-    """Schema for chat response"""
-    response: str 
+    chat_id: str
+    user_query: str
+    response: str
+    streamed: Optional[bool] = False 
