@@ -32,59 +32,30 @@ async def get_my_profile(
             success=True,
             message="No profile found. Returning default profile.",
             data=ProfileResponse(
-                id=0,
                 user_id=current_user.id,
+                first_name=current_user.first_name,
+                last_name=current_user.last_name,
                 date_of_birth=None,
                 height=None,
                 height_unit="cm",
                 weight=None,
                 weight_unit="kg",
                 gender=None,
-                profile_picture_url=None,
-                name=f"{current_user.first_name} {current_user.last_name}"
+                profile_picture_url=None
             )
         )
-    # Add name from user data
+    # Add first_name and last_name from user data
     try:
         response_data = ProfileResponse.model_validate(profile)
     except ValidationError as e:
         return api_error_response(status_code=400, message=f"Invalid profile data: {e}")
-    response_data.name = f"{current_user.first_name} {current_user.last_name}"
+    response_data.first_name = current_user.first_name
+    response_data.last_name = current_user.last_name
     return api_response(
         success=True,
         message="Profile fetched successfully",
         data=response_data
     )
-
-
-# @router.post("/", response_model=BaseResponse[ProfileResponse], status_code=status.HTTP_201_CREATED)
-# async def create_profile(
-#     profile_data: ProfileCreate,
-#     current_user: User = Depends(get_current_user),
-#     db: AsyncSession = Depends(get_db)
-# ) -> Any:
-#     """
-#     Create a new profile for the current user
-#     """
-#     # Check if profile already exists
-#     existing_profile = await ProfileService.get_profile_by_user_id(db, current_user.id)
-#     if existing_profile:
-#         raise HTTPException(
-#             status_code=status.HTTP_400_BAD_REQUEST,
-#             detail="Profile already exists for this user"
-#         )
-#     # Create profile
-#     profile = await ProfileService.create_profile(db, profile_data, current_user.id)
-#     # Add name from user data
-#     response_data = ProfileResponse.model_validate(profile)
-#     response_data.name = f"{current_user.first_name} {current_user.last_name}"
-#     return BaseResponse[
-#         ProfileResponse
-#     ](
-#         success=True,
-#         message="Profile created successfully",
-#         data=response_data
-#     )
 
 
 @router.put("/", response_model=BaseResponse[ProfileResponse])
@@ -131,7 +102,8 @@ async def update_profile(
         response_data = ProfileResponse.model_validate(profile)
     except ValidationError as e:
         return api_error_response(status_code=400, message=f"Invalid profile data: {e}")
-    response_data.name = f"{current_user.first_name} {current_user.last_name}"
+    response_data.first_name = current_user.first_name
+    response_data.last_name = current_user.last_name
     return api_response(
         success=True,
         message=msg,

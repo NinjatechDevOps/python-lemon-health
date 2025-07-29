@@ -104,10 +104,9 @@ class ProfilePictureResponse(BaseModel):
 
 class ProfileResponse(ProfileBase):
     """Schema for profile response"""
-    id: int
     user_id: int
-    # Include user name from auth data
-    name: Optional[str] = None
-
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    
     class Config:
         from_attributes = True 
