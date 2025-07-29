@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional, Generic, TypeVar
+from enum import Enum
 
 from pydantic import BaseModel, Field, validator, EmailStr
 import re
@@ -10,6 +11,12 @@ class BaseResponse(BaseModel, Generic[T]):
     success: bool
     message: str
     data: Optional[T] = None
+
+
+class VerificationTypeEnum(str, Enum):
+    """Enum for verification types"""
+    MOBILE_VERIFICATION = "mobile_verification"
+    PASSWORD_RESET = "password_reset"
 
 
 class UserBase(BaseModel):
@@ -116,6 +123,10 @@ class VerificationRequest(BaseModel):
         pattern=r"^\+[0-9]{1,4}$",
         description="Country code must start with + followed by 1-4 digits"
     )  # Default to Spain (+34)
+    verification_type: VerificationTypeEnum = Field(
+        default=VerificationTypeEnum.MOBILE_VERIFICATION,
+        description="Type of verification: mobile_verification or password_reset"
+    )
     
     @validator('mobile_number')
     def validate_mobile_number(cls, v):
@@ -150,6 +161,10 @@ class VerificationCodeSubmit(BaseModel):
         description="Country code must start with + followed by 1-4 digits"
     )  # Default to Spain (+34)
     code: str = Field(..., min_length=6, max_length=6, pattern=r"^[0-9]{6}$", description="6-digit verification code")
+    verification_type: VerificationTypeEnum = Field(
+        default=VerificationTypeEnum.MOBILE_VERIFICATION,
+        description="Type of verification: mobile_verification or password_reset"
+    )
     
     @validator('mobile_number')
     def validate_mobile_number(cls, v):
@@ -208,7 +223,7 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    """Schema for password reset"""
+    """Schema for password reset (after OTP verification)"""
     mobile_number: str = Field(
         ..., 
         min_length=7, 
@@ -222,7 +237,6 @@ class ResetPasswordRequest(BaseModel):
         pattern=r"^\+[0-9]{1,4}$",
         description="Country code must start with + followed by 1-4 digits"
     )  # Default to Spain (+34)
-    code: str = Field(..., min_length=6, max_length=6, pattern=r"^[0-9]{6}$", description="6-digit verification code")
     new_password: str = Field(..., min_length=8, max_length=16, description="Password must be 8-16 characters")
     
     @validator('mobile_number')
@@ -239,12 +253,6 @@ class ResetPasswordRequest(BaseModel):
     def validate_country_code(cls, v):
         if not re.match(r'^\+[0-9]{1,4}$', v):
             raise ValueError('Country code must start with + followed by 1-4 digits')
-        return v
-        
-    @validator('code')
-    def validate_code(cls, v):
-        if not re.match(r'^[0-9]{6}$', v):
-            raise ValueError('Verification code must be 6 digits')
         return v
     
     @validator('new_password')

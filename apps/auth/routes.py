@@ -13,7 +13,7 @@ from apps.auth.models import User, VerificationType
 from apps.auth.schemas import (
     ChangePasswordRequest, ForgotPasswordRequest, ResetPasswordRequest, Token, UserCreate, 
     UserLogin, UserResponse, VerificationCodeSubmit, VerificationRequest,
-    RefreshToken, LogoutRequest, BaseResponse
+    RefreshToken, LogoutRequest, BaseResponse, VerificationTypeEnum
 )
 from apps.auth.services import AuthService
 from apps.auth.twilio_service import twilio_service
@@ -21,6 +21,7 @@ from apps.auth.deps import get_current_verified_user, get_current_user
 from apps.auth.utils import api_response, api_error_response
 
 router = APIRouter()
+
 user_router = APIRouter()
 
 
@@ -166,18 +167,21 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)) -> Any:
 @router.post("/verify", response_model=BaseResponse)
 async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession = Depends(get_db)) -> Any:
     """
-    Verify SMS code
+    Verify SMS code for mobile verification or password reset
     
     1. Find user by mobile number
-    2. Verify code
-    3. Mark user as verified
-    4. Return success response
+    2. Verify code based on verification type
+    3. Handle based on verification type:
+       - Mobile verification: Mark user as verified and return tokens
+       - Password reset: Return success (user will then call reset password)
+    4. Return appropriate response
     """
     success, result = await AuthService.verify_code_and_user(
         db=db,
         mobile_number=verification_in.mobile_number,
         country_code=verification_in.country_code,
-        code=verification_in.code
+        code=verification_in.code,
+        verification_type=verification_in.verification_type
     )
     
     if not success:
@@ -187,38 +191,55 @@ async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession 
             message=f"{result} (Code: {verification_in.code})"
         )
     
-    try:
-        token_response = Token(
-            access_token=result["access_token"],
-            refresh_token=result["refresh_token"],
-            token_type=result["token_type"]
+    # Handle different verification types
+    if verification_in.verification_type == VerificationTypeEnum.MOBILE_VERIFICATION:
+        try:
+            token_response = Token(
+                access_token=result["access_token"],
+                refresh_token=result["refresh_token"],
+                token_type=result["token_type"]
+            )
+            
+            # Include user data in the response
+            response_data = {
+                "token": token_response.model_dump(),  # Use model_dump() for Pydantic v2 compatibility
+                "user": result["user"]
+            }
+        except ValidationError as e:
+            return api_error_response(
+                message="Invalid token data",
+                status_code=400,
+                data={"errors": e.errors()}
+            )
+        return api_response(
+            success=True,
+            message="Verification successful",
+            data=response_data
         )
-        
-        # Include user data in the response
-        response_data = {
-            "token": token_response.model_dump(),  # Use model_dump() for Pydantic v2 compatibility
-            "user": result["user"]
-        }
-    except ValidationError as e:
-        return api_error_response(
-            message="Invalid token data",
-            status_code=400,
-            data={"errors": e.errors()}
+    
+    elif verification_in.verification_type == VerificationTypeEnum.PASSWORD_RESET:
+        return api_response(
+            success=True,
+            message="Password reset verification successful. You can now reset your password.",
+            data={
+                "user_id": result["user_id"],
+                "verification_type": "password_reset"
+            }
         )
-    return api_response(
-        success=True,
-        message="Verification successful",
-        data=response_data
+    
+    return api_error_response(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        message="Invalid verification type"
     )
 
 
 @router.post("/resend-verification", response_model=BaseResponse)
 async def resend_verification(verification_in: VerificationRequest, db: AsyncSession = Depends(get_db)) -> Any:
     """
-    Resend verification code
+    Resend verification code for mobile verification or password reset
     
     1. Find user by mobile number
-    2. Send new verification code
+    2. Send new verification code based on verification type
     3. Return success response
     """
     # Find user by mobile number
@@ -234,17 +255,27 @@ async def resend_verification(verification_in: VerificationRequest, db: AsyncSes
             message="User not found"
         )
     
-    # Check if user is already verified
-    if user.is_verified:
+    # Map verification type enum to VerificationType model enum
+    if verification_in.verification_type == VerificationTypeEnum.MOBILE_VERIFICATION:
+        twilio_verification_type = VerificationType.SIGNUP
+        # Check if user is already verified for mobile verification
+        if user.is_verified:
+            return api_error_response(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="User is already verified"
+            )
+    elif verification_in.verification_type == VerificationTypeEnum.PASSWORD_RESET:
+        twilio_verification_type = VerificationType.PASSWORD_RESET
+    else:
         return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            message="User is already verified"
+            message="Invalid verification type"
         )
     
     # Send verification code
     otp_sent, message = await twilio_service.create_verification_code(
         db=db,
-        verification_type=VerificationType.SIGNUP,
+        verification_type=twilio_verification_type,
         mobile_number=user.mobile_number,
         country_code=user.country_code,
         user_id=user.id
@@ -256,7 +287,8 @@ async def resend_verification(verification_in: VerificationRequest, db: AsyncSes
         message="Verification code request processed",
         data={
             "otp_sent": otp_sent,
-            "otp_message": None if otp_sent else message
+            "otp_message": None if otp_sent else message,
+            "verification_type": verification_in.verification_type.value
         }
     )
 
@@ -298,7 +330,8 @@ async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = 
         message="Password reset request processed",
         data={
             "otp_sent": otp_sent,
-            "otp_message": None if otp_sent else message
+            "otp_message": None if otp_sent else message,
+            "verification_type": "password_reset"
         }
     )
 
@@ -306,12 +339,11 @@ async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = 
 @router.post("/reset-password", response_model=BaseResponse)
 async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depends(get_db)) -> Any:
     """
-    Reset password with verification code
+    Reset password (after OTP verification)
     
     1. Find user by mobile number
-    2. Verify code
-    3. Update password
-    4. Return success response
+    2. Update password (OTP verification already done in verify endpoint)
+    3. Return success response
     """
     # Find user by mobile number
     user = await AuthService.get_user_by_mobile(
@@ -324,22 +356,6 @@ async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depe
         return api_error_response(
             status_code=status.HTTP_404_NOT_FOUND,
             message="User not found"
-        )
-    
-    # Verify code
-    success, message = await twilio_service.verify_code(
-        db=db,
-        verification_type=VerificationType.PASSWORD_RESET,
-        mobile_number=user.mobile_number,
-        country_code=user.country_code,
-        code=reset_in.code,
-        user_id=user.id
-    )
-    
-    if not success:
-        return api_error_response(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            message=message
         )
     
     # Update password

@@ -12,6 +12,7 @@ from apps.core.config import settings
 from apps.core.security import create_access_token, create_refresh_token, get_password_hash, verify_password, verify_token
 from apps.auth.models import User, VerificationType
 from apps.auth.twilio_service import twilio_service
+from apps.auth.schemas import VerificationTypeEnum
 
 
 class AuthService:
@@ -156,13 +157,17 @@ class AuthService:
         # Find user by mobile number
         user = await AuthService.get_user_by_mobile(db, mobile_number, country_code)
         
-        # Check if user exists and password is correct
-        if not user or not verify_password(password, user.hashed_password):
-            return False, "Incorrect mobile number or password"
+        # Check if user exists
+        if not user:
+            return False, f"No account found with mobile number {country_code}{mobile_number}. Please register first."
         
         # Check if user is active
         if not user.is_active:
-            return False, "Inactive user"
+            return False, "Your account has been deactivated. Please contact support for assistance."
+        
+        # Check if password is correct
+        if not verify_password(password, user.hashed_password):
+            return False, "Incorrect password. Please check your password and try again."
         
         # Create user response data with datetime converted to ISO format strings
         user_data = {
@@ -207,11 +212,19 @@ class AuthService:
         db: AsyncSession,
         mobile_number: str,
         country_code: str,
-        code: str
+        code: str,
+        verification_type: VerificationTypeEnum = VerificationTypeEnum.MOBILE_VERIFICATION
     ) -> Tuple[bool, Any]:
         """
-        Verify code and mark user as verified
+        Verify code and handle based on verification type
         
+        Args:
+            db: Database session
+            mobile_number: User's mobile number
+            country_code: User's country code
+            code: Verification code
+            verification_type: Type of verification (mobile_verification or password_reset)
+            
         Returns:
             Tuple of (success, token_data or error_message)
         """
@@ -221,53 +234,73 @@ class AuthService:
         if not user:
             return False, "User not found"
         
+        # Map verification type enum to VerificationType model enum
+        if verification_type == VerificationTypeEnum.MOBILE_VERIFICATION:
+            twilio_verification_type = VerificationType.SIGNUP
+        elif verification_type == VerificationTypeEnum.PASSWORD_RESET:
+            twilio_verification_type = VerificationType.PASSWORD_RESET
+        else:
+            return False, "Invalid verification type"
+        
         # Verify code
         success, message = await twilio_service.verify_code(
             db=db,
-            verification_type=VerificationType.SIGNUP,
+            verification_type=twilio_verification_type,
             mobile_number=user.mobile_number,
             country_code=user.country_code,
             code=code,
-            user_id=user.id  # Pass the user_id explicitly
+            user_id=user.id
         )
         
         if not success:
             return False, message
         
-        # Mark user as verified
-        await AuthService.verify_user(db, user)
+        # Handle based on verification type
+        if verification_type == VerificationTypeEnum.MOBILE_VERIFICATION:
+            # Mark user as verified
+            await AuthService.verify_user(db, user)
+            
+            # Create user response data with datetime converted to ISO format strings
+            user_data = {
+                "id": user.id,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "mobile_number": user.mobile_number,
+                "country_code": user.country_code,
+                "email": user.email,
+                "is_active": user.is_active,
+                "is_verified": user.is_verified,
+                "created_at": user.created_at.isoformat() if user.created_at else None
+            }
+            
+            # Generate access token
+            access_token = create_access_token(
+                subject=str(user.id),
+                extra_data={"is_verified": user.is_verified}
+            )
+            
+            # Generate refresh token
+            refresh_token = create_refresh_token(
+                subject=str(user.id)
+            )
+            
+            return True, {
+                "message": "Verification successful",
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "token_type": "bearer",
+                "user": user_data
+            }
         
-        # Create user response data with datetime converted to ISO format strings
-        user_data = {
-            "id": user.id,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "mobile_number": user.mobile_number,
-            "country_code": user.country_code,
-            "email": user.email,
-            "is_active": user.is_active,
-            "is_verified": user.is_verified,
-            "created_at": user.created_at.isoformat() if user.created_at else None
-        }
+        elif verification_type == VerificationTypeEnum.PASSWORD_RESET:
+            # For password reset, just return success without tokens
+            # The user will then call reset password endpoint
+            return True, {
+                "message": "Password reset verification successful",
+                "user_id": user.id
+            }
         
-        # Generate access token
-        access_token = create_access_token(
-            subject=str(user.id),
-            extra_data={"is_verified": user.is_verified}
-        )
-        
-        # Generate refresh token
-        refresh_token = create_refresh_token(
-            subject=str(user.id)
-        )
-        
-        return True, {
-            "message": "Verification successful",
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer",
-            "user": user_data
-        }
+        return False, "Invalid verification type"
     
     @staticmethod
     async def refresh_token(
