@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     ALLOWED_IMAGE_TYPES: List[str] = ["image/jpeg", "image/png", "image/jpg"]
     MAX_IMAGE_SIZE: int = 5 * 1024 * 1024  # 5MB
     
+    # BASE URL
+    BE_BASE_URL: str = "http://localhost:8000"
+    
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore",

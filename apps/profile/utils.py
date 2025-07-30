@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional, Tuple
+from apps.core.config import settings
 
 def api_response(success: bool, message: str, data: dict = None):
     return {
@@ -90,3 +91,25 @@ def convert_form_data_to_profile_update(
         return ProfileUpdate(**converted_data), error_message
     
     return ProfileUpdate(**converted_data), None 
+
+
+
+
+def convert_relative_to_complete_url(relative_url: Optional[str]) -> Optional[str]:
+    """
+    Convert relative profile picture URL to complete URL using BE_BASE_URL
+    
+    Args:
+        relative_url: Relative URL like "/media/profile_pictures/filename.jpg"
+        
+    Returns:
+        Complete URL like "http://localhost:8000/media/profile_pictures/filename.jpg"
+    """
+    if not relative_url:
+        return None
+    
+    # Remove leading slash if present to avoid double slashes
+    if relative_url.startswith('/'):
+        relative_url = relative_url[1:]
+    
+    return f"{settings.BE_BASE_URL}/{relative_url}"

@@ -45,7 +45,7 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> A
     if existing_user:
         return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            message="Looks like this number is already in use. Try logging in instead."
+            message="Looks like you already have an account. Please log in."
         )
     # Check if user with this email already exists
     if user_in.email:

@@ -13,7 +13,7 @@ from apps.core.db import get_db
 from apps.profile.models import Profile
 from apps.profile.schemas import ProfileCreate, ProfileResponse, ProfileUpdate, ProfilePictureResponse, BaseResponse
 from apps.profile.services import ProfileService
-from apps.profile.utils import api_response, api_error_response, convert_form_data_to_profile_update
+from apps.profile.utils import api_response, api_error_response, convert_form_data_to_profile_update, convert_relative_to_complete_url
 
 router = APIRouter()
 
@@ -52,6 +52,10 @@ async def get_my_profile(
         return api_error_response(status_code=400, message=f"Invalid profile data: {e}")
     response_data.first_name = current_user.first_name
     response_data.last_name = current_user.last_name
+    
+    # Convert relative URL to complete URL
+    response_data.profile_picture_url = convert_relative_to_complete_url(response_data.profile_picture_url)
+    
     return api_response(
         success=True,
         message="Profile fetched successfully",
@@ -120,6 +124,9 @@ async def update_profile(
         response_data.first_name = current_user.first_name
         response_data.last_name = current_user.last_name
         
+        # Convert relative URL to complete URL
+        response_data.profile_picture_url = convert_relative_to_complete_url(response_data.profile_picture_url)
+        
         print(f"DEBUG - Final response data: {response_data.model_dump()}")
         return api_response(
             success=True,
@@ -146,6 +153,7 @@ async def delete_profile(
     profile = await ProfileService.get_profile_by_user_id(db, current_user.id)
     if not profile:
         return api_error_response(status_code=404, message="Profile not found")
+    
     await ProfileService.delete_profile(db, profile)
     return api_response(success=True, message="Profile deleted successfully", data={})
 

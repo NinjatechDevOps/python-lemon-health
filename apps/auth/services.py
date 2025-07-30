@@ -159,7 +159,7 @@ class AuthService:
         
         # Check if user exists
         if not user:
-            return False, f"No account found with mobile number {country_code}{mobile_number}. Please register first."
+            return False, "You're not registered yet. Please sign up to continue."
         
         # Check if user is active
         if not user.is_active:
