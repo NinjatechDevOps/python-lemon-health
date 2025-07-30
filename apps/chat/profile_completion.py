@@ -18,6 +18,86 @@ class ProfileCompletionService:
     
     REQUIRED_FIELDS = ['date_of_birth', 'height', 'weight', 'gender']
     
+    # Queries that require complete profile data
+    PROFILE_DEPENDENT_QUERIES = [
+        'nutrition plan', 'diet plan', 'meal plan', 'calorie', 'macronutrient',
+        'weight loss', 'weight gain', 'muscle gain', 'fitness plan', 'exercise plan',
+        'workout plan', 'training plan', 'personalized', 'customized', 'tailored',
+        'my plan', 'my nutrition', 'my diet', 'my exercise', 'my workout'
+    ]
+    
+    # Queries that don't need profile data
+    PROFILE_INDEPENDENT_QUERIES = [
+        'benefits of', 'what is', 'how to cook', 'recipe', 'food guide',
+        'vitamin', 'mineral', 'supplement', 'general', 'overview', 'information',
+        'tips', 'advice', 'guide', 'explain', 'tell me about'
+    ]
+    
+    @staticmethod
+    def is_profile_required(user_query: str, prompt_type: str) -> bool:
+        """
+        Determine if profile data is required for the given query
+        
+        Args:
+            user_query: User's query
+            prompt_type: Type of prompt (nutrition, exercise, etc.)
+            
+        Returns:
+            bool: True if profile data is required
+        """
+        query_lower = user_query.lower()
+        
+        # Check for profile-dependent keywords
+        for keyword in ProfileCompletionService.PROFILE_DEPENDENT_QUERIES:
+            if keyword in query_lower:
+                return True
+        
+        # Check for profile-independent keywords
+        for keyword in ProfileCompletionService.PROFILE_INDEPENDENT_QUERIES:
+            if keyword in query_lower:
+                return False
+        
+        # Default behavior based on prompt type
+        if prompt_type in ['nutrition', 'exercise']:
+            # For nutrition/exercise prompts, require profile unless explicitly general
+            return True
+        else:
+            # For other prompts (documents, prescriptions, etc.), profile not required
+            return False
+    
+    @staticmethod
+    def get_required_fields_for_query(user_query: str, prompt_type: str) -> List[str]:
+        """
+        Get the specific profile fields required for the given query
+        
+        Args:
+            user_query: User's query
+            prompt_type: Type of prompt
+            
+        Returns:
+            List[str]: Required profile fields
+        """
+        query_lower = user_query.lower()
+        
+        # Default required fields
+        required_fields = ['date_of_birth', 'height', 'weight', 'gender']
+        
+        # Adjust based on query context
+        if 'nutrition' in prompt_type or 'diet' in query_lower or 'meal' in query_lower:
+            # Nutrition queries need all fields for accurate recommendations
+            return required_fields
+        elif 'exercise' in prompt_type or 'workout' in query_lower or 'fitness' in query_lower:
+            # Exercise queries need age, gender, height, weight
+            return required_fields
+        elif 'weight' in query_lower:
+            # Weight-related queries need height and weight
+            return ['height', 'weight']
+        elif 'age' in query_lower or 'years old' in query_lower:
+            # Age-specific queries might only need age
+            return ['date_of_birth']
+        
+        return required_fields
+    
     @staticmethod
     async def check_profile_completeness(db: AsyncSession, user_id: int) -> Tuple[bool, List[str]]:
         """
@@ -34,6 +114,46 @@ class ProfileCompletionService:
         
         missing_fields = []
         for field in ProfileCompletionService.REQUIRED_FIELDS:
+            value = getattr(profile, field)
+            if value is None or (isinstance(value, str) and value.strip() == ""):
+                missing_fields.append(field)
+        
+        return len(missing_fields) == 0, missing_fields
+    
+    @staticmethod
+    async def check_profile_completeness_for_query(
+        db: AsyncSession, 
+        user_id: int, 
+        user_query: str, 
+        prompt_type: str
+    ) -> Tuple[bool, List[str]]:
+        """
+        Check if profile is complete for the specific query context
+        
+        Args:
+            db: Database session
+            user_id: User ID
+            user_query: User's query
+            prompt_type: Type of prompt
+            
+        Returns:
+            Tuple[bool, List[str]]: (is_complete, missing_fields)
+        """
+        # First check if profile is required for this query
+        if not ProfileCompletionService.is_profile_required(user_query, prompt_type):
+            return True, []  # Profile not required, consider complete
+        
+        # Get required fields for this specific query
+        required_fields = ProfileCompletionService.get_required_fields_for_query(user_query, prompt_type)
+        
+        result = await db.execute(select(Profile).where(Profile.user_id == user_id))
+        profile = result.scalar_one_or_none()
+        
+        if not profile:
+            return False, required_fields
+        
+        missing_fields = []
+        for field in required_fields:
             value = getattr(profile, field)
             if value is None or (isinstance(value, str) and value.strip() == ""):
                 missing_fields.append(field)
@@ -129,23 +249,126 @@ class ProfileCompletionService:
             user=user
         )
         
-        # Parse JSON response
+        # Parse JSON response with improved error handling
         try:
             import json
-            # Extract JSON from response (handle cases where LLM adds extra text)
-            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            import re
+            
+            # Clean the response - remove any extra text before/after JSON
+            response_clean = response.strip()
+            
+            # Try to find JSON object in the response
+            json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', response_clean, re.DOTALL)
+            
             if json_match:
-                extracted_data = json.loads(json_match.group())
+                json_str = json_match.group()
+                print(f"Extracted JSON string: {json_str}")
+                extracted_data = json.loads(json_str)
             else:
-                extracted_data = json.loads(response)
+                # If no JSON found, try to parse the entire response
+                print(f"No JSON pattern found, trying to parse entire response: {response_clean}")
+                extracted_data = json.loads(response_clean)
             
             # Clean and convert extracted data
             cleaned_data = ProfileCompletionService.clean_extracted_data(extracted_data)
+            print(f"Cleaned extracted data: {cleaned_data}")
             
             return cleaned_data
             
         except (json.JSONDecodeError, KeyError) as e:
             print(f"Error parsing LLM response: {e}")
+            print(f"Raw LLM response: {response}")
+            
+            # Try to extract data manually if JSON parsing fails
+            return ProfileCompletionService.extract_data_manually(response, missing_fields)
+    
+    @staticmethod
+    def extract_data_manually(response: str, missing_fields: List[str]) -> Dict[str, Any]:
+        """
+        Manually extract profile data from LLM response when JSON parsing fails
+        
+        Args:
+            response: LLM response string
+            missing_fields: List of missing profile fields
+            
+        Returns:
+            Dict containing extracted profile information
+        """
+        extracted_data = {}
+        response_lower = response.lower()
+        
+        try:
+            # Extract age/date_of_birth
+            if 'date_of_birth' in missing_fields:
+                age_match = re.search(r'(\d+)\s*(?:years?\s*old|y\.?o\.?)', response_lower)
+                if age_match:
+                    age = int(age_match.group(1))
+                    current_year = datetime.now().year
+                    current_month = datetime.now().month
+                    current_day = datetime.now().day
+                    
+                    # More accurate age calculation
+                    birth_year = current_year - age
+                    # If birthday hasn't passed this year, subtract one more year
+                    if current_month < 1 or (current_month == 1 and current_day < 1):
+                        birth_year -= 1
+                    
+                    extracted_data['date_of_birth'] = f"{birth_year}-01-01"
+            
+            # Extract height - only if explicitly mentioned in user message
+            if 'height' in missing_fields:
+                height_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:cm|centimeters?)', response_lower)
+                if height_match:
+                    extracted_data['height'] = float(height_match.group(1))
+                    extracted_data['height_unit'] = 'cm'
+                else:
+                    # Check for feet
+                    feet_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:ft|feet?)', response_lower)
+                    if feet_match:
+                        extracted_data['height'] = float(feet_match.group(1))
+                        extracted_data['height_unit'] = 'ft'
+            
+            # Extract weight - only if explicitly mentioned in user message
+            if 'weight' in missing_fields:
+                weight_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:kg|kilograms?)', response_lower)
+                if weight_match:
+                    extracted_data['weight'] = float(weight_match.group(1))
+                    extracted_data['weight_unit'] = 'kg'
+            
+            # Extract gender - only if explicitly mentioned in user message
+            if 'gender' in missing_fields:
+                # More specific gender extraction to avoid false positives
+                gender_patterns = [
+                    (r'\b(?:i am|i\'m)\s+(male)\b', 'Male'),
+                    (r'\b(?:i am|i\'m)\s+(female)\b', 'Female'),
+                    (r'\b(?:gender|sex)\s+(?:is\s+)?(male)\b', 'Male'),
+                    (r'\b(?:gender|sex)\s+(?:is\s+)?(female)\b', 'Female'),
+                    (r'\b(?:male)\s+(?:gender|sex)\b', 'Male'),
+                    (r'\b(?:female)\s+(?:gender|sex)\b', 'Female'),
+                    (r'\b(?:i\'m|i am)\s+(male)\b', 'Male'),
+                    (r'\b(?:i\'m|i am)\s+(female)\b', 'Female'),
+                ]
+                
+                for pattern, gender_value in gender_patterns:
+                    match = re.search(pattern, response_lower)
+                    if match:
+                        extracted_data['gender'] = gender_value
+                        break
+                
+                # Fallback to simple check if no pattern matched
+                if 'gender' not in extracted_data:
+                    if 'male' in response_lower and 'female' not in response_lower and 'other' not in response_lower:
+                        extracted_data['gender'] = 'Male'
+                    elif 'female' in response_lower and 'male' not in response_lower and 'other' not in response_lower:
+                        extracted_data['gender'] = 'Female'
+                    elif 'other' in response_lower and 'male' not in response_lower and 'female' not in response_lower:
+                        extracted_data['gender'] = 'Other'
+            
+            print(f"Manually extracted data: {extracted_data}")
+            return extracted_data
+            
+        except Exception as e:
+            print(f"Error in manual extraction: {e}")
             return {}
     
     @staticmethod
@@ -261,7 +484,8 @@ class ProfileCompletionService:
         user_id: int,
         user_message: str,
         conversation_history: List[Dict[str, str]],
-        user
+        user,
+        prompt_type: str = None
     ) -> Tuple[str, bool, bool]:
         """
         Process user message with profile completion if needed
@@ -272,44 +496,73 @@ class ProfileCompletionService:
             user_message: User's message
             conversation_history: Previous conversation messages
             user: User object
+            prompt_type: Type of prompt (nutrition, exercise, etc.)
             
         Returns:
             Tuple[str, bool, bool]: (response_message, should_continue_with_llm, profile_was_updated)
         """
-        # Check profile completeness
-        is_complete, missing_fields = await ProfileCompletionService.check_profile_completeness(db, user_id)
+        print(f"Processing profile completion for user {user_id}")
+        print(f"User message: {user_message}")
+        print(f"Prompt type: {prompt_type}")
         
-        if is_complete:
-            # Profile is complete, proceed with normal chat
-            return None, True, False
+        # Check profile completeness for this specific query
+        is_complete, missing_fields = await ProfileCompletionService.check_profile_completeness_for_query(
+            db, user_id, user_message, prompt_type
+        )
         
-        # Profile is incomplete - check if user is providing profile info
-        # Look for profile-related keywords in the message
+        print(f"Profile complete: {is_complete}")
+        print(f"Missing fields: {missing_fields}")
+        
+        # Check if user is providing profile info (regardless of completeness)
         profile_keywords = ['age', 'years old', 'height', 'weight', 'kg', 'cm', 'male', 'female', 'other', 'gender']
         message_lower = user_message.lower()
         
         has_profile_info = any(keyword in message_lower for keyword in profile_keywords)
+        print(f"User message contains profile info: {has_profile_info}")
         
         if has_profile_info:
             # User is providing profile info, try to extract and update
-            extracted_data = await ProfileCompletionService.extract_profile_info(
-                user_message, conversation_history, missing_fields, user
-            )
+            print("Attempting to extract profile information")
+            
+            # If profile is complete, extract all fields that might be updated
+            if is_complete:
+                # For complete profiles, check for any profile-related fields
+                all_fields = ['date_of_birth', 'height', 'weight', 'gender']
+                extracted_data = await ProfileCompletionService.extract_profile_info(
+                    user_message, conversation_history, all_fields, user
+                )
+            else:
+                # For incomplete profiles, only extract missing fields
+                extracted_data = await ProfileCompletionService.extract_profile_info(
+                    user_message, conversation_history, missing_fields, user
+                )
+            
+            print(f"Extracted data: {extracted_data}")
             
             if extracted_data:
                 # Update profile with extracted data
+                print("Updating profile with extracted data")
                 success = await ProfileCompletionService.update_profile(db, user_id, extracted_data)
                 if success:
+                    print("Profile updated successfully")
                     return f"I've updated your profile with the information you provided: {', '.join(extracted_data.keys())}. Now let me help you with your request.", True, True
             
-            # If extraction failed, generate LLM message asking for missing fields
-            profile_message = await ProfileCompletionService.generate_profile_completion_message(
-                user_message, missing_fields, conversation_history, user
-            )
-            return profile_message, False, False
-        else:
-            # User is not providing profile info, generate LLM message asking for missing fields
-            profile_message = await ProfileCompletionService.generate_profile_completion_message(
-                user_message, missing_fields, conversation_history, user
-            )
-            return profile_message, False, False 
+            # If extraction failed and profile is incomplete, generate LLM message asking for missing fields
+            if not is_complete:
+                print("Extraction failed, generating profile completion message")
+                profile_message = await ProfileCompletionService.generate_profile_completion_message(
+                    user_message, missing_fields, conversation_history, user
+                )
+                return profile_message, False, False
+        
+        # If profile is complete and no profile info provided, proceed with normal chat
+        if is_complete:
+            print("Profile is complete, proceeding with normal chat")
+            return None, True, False
+        
+        # Profile is incomplete and user is not providing profile info, generate LLM message asking for missing fields
+        print("User not providing profile info, generating profile completion message")
+        profile_message = await ProfileCompletionService.generate_profile_completion_message(
+            user_message, missing_fields, conversation_history, user
+        )
+        return profile_message, False, False 

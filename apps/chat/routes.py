@@ -137,7 +137,8 @@ async def chat(
             user_id=current_user.id,
             user_message=chat_request.user_query,
             conversation_history=history_msgs,
-            user=current_user
+            user=current_user,
+            prompt_type=chat_request.prompt_id
         )
         
         # If profile is incomplete and user is not providing profile info, return the profile completion message
