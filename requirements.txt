@@ -26,5 +26,11 @@ python-dotenv
 httpx
 email-validator
 
+# LLM Providers
+openai==1.97.1
+groq==0.30.0
+google-generativeai==0.8.5
+Pillow==11.3.0
+
 
 

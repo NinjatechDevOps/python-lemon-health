@@ -8,6 +8,7 @@ from fastapi.exceptions import RequestValidationError
 
 from apps.auth.routes import router as auth_router
 from apps.profile.routes import router as profile_router
+from apps.chat.routes import router as chat_router
 from apps.core.config import settings
 
 # Configure logging
@@ -86,7 +87,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # Include API routes
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(profile_router, prefix="/api/profile", tags=["User Profile"])
-# app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])
+app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])
 # app.include_router(role_router, prefix="/api/roles", tags=["Roles"])
 
 @app.get("/", tags=["Health Check"])
