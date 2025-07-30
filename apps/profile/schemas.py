@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Optional, Generic, TypeVar
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, model_validator
 import re
 
 T = TypeVar("T")
@@ -19,9 +19,7 @@ class ProfileBase(BaseModel):
     )
     height: Optional[float] = Field(
         None, 
-        ge=50, 
-        le=250, 
-        description="Height in cm (50-250) or inches (19.7-98.4)"
+        description="Height in cm (50-250) or feet (2-8)"
     )
     height_unit: Optional[str] = Field(
         None, 
@@ -46,15 +44,34 @@ class ProfileBase(BaseModel):
         description="URL to the profile picture"
     )
 
-    @validator('height')
-    def validate_height(cls, v, values):
-        if v is not None:
-            height_unit = values.get('height_unit', 'cm')
-            if height_unit == 'cm' and (v < 50 or v > 250):
-                raise ValueError('Height must be between 50 and 250 cm')
-            elif height_unit == 'ft/in' and (v < 1.5 or v > 8.0):
-                raise ValueError('Height must be between 1.5 and 8.0 ft/in')
-        return v
+    @model_validator(mode='after')
+    def validate_height_with_unit(self):
+        print(f"DEBUG - Model validator called with data: {self.model_dump()}")
+        height = self.height
+        height_unit = self.height_unit or 'cm'
+        
+        if height is not None:
+            print(f"DEBUG - Validating height={height} with unit={height_unit}")
+            if height_unit == 'cm':
+                if height < 50 or height > 250:
+                    print(f"DEBUG - CM validation failed: {height} not in range [50, 250]")
+                    raise ValueError('Height must be between 50 and 250 cm')
+                else:
+                    print(f"DEBUG - CM validation passed: {height}")
+            elif height_unit == 'ft/in':
+                if height < 2 or height > 8:
+                    print(f"DEBUG - Feet validation failed: {height} not in range [2, 8]")
+                    raise ValueError('Height must be between 2 and 8 feet')
+                else:
+                    print(f"DEBUG - Feet validation passed: {height}")
+            else:
+                # Default to cm validation if no unit specified
+                if height < 50 or height > 250:
+                    print(f"DEBUG - Default CM validation failed: {height} not in range [50, 250]")
+                    raise ValueError('Height must be between 50 and 250 cm')
+                else:
+                    print(f"DEBUG - Default CM validation passed: {height}")
+        return self
 
     @validator('weight')
     def validate_weight(cls, v, values):
