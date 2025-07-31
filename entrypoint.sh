@@ -11,6 +11,10 @@ echo "PostgreSQL is ready!"
 echo "Running database migrations..."
 alembic upgrade head
 
+# Seed initial prompts
+echo "Seeding initial prompts..."
+python -m scripts.seed_prompts
+
 # Start the application
 echo "Starting the application..."
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload 
