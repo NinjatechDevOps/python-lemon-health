@@ -63,7 +63,7 @@ async def get_my_profile(
     )
 
 
-@router.patch("/", response_model=BaseResponse[ProfileResponse])
+@router.post("/", response_model=BaseResponse[ProfileResponse])
 async def update_profile(
     date_of_birth: Optional[str] = Form(None),
     height: Optional[str] = Form(None),
