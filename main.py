@@ -22,6 +22,7 @@ app = FastAPI(
     title="Lemon Health API",
     description="API for the Lemon Health mobile application",
     version="0.1.0",
+    redirect_slashes=True,  # Automatically redirect /api/profile to /api/profile/
 )
 
 # Add CORS middleware
