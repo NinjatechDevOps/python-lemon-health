@@ -38,6 +38,9 @@ app.add_middleware(
 os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
 app.mount("/media", StaticFiles(directory=settings.MEDIA_ROOT), name="media")
 
+# Mount the static directory for serving the static files
+app.mount("/static", StaticFiles(directory=settings.STATIC_ROOT), name="static")
+
 # Global exception handlers
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):

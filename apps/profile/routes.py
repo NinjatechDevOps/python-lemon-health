@@ -29,21 +29,25 @@ async def get_my_profile(
     profile = await ProfileService.get_profile_by_user_id(db, current_user.id)
     if not profile:
         # Instead of 404, return a default empty profile with user info
+        default_response = ProfileResponse(
+            user_id=current_user.id,
+            first_name=current_user.first_name,
+            last_name=current_user.last_name,
+            date_of_birth=None,
+            height=None,
+            height_unit="cm",
+            weight=None,
+            weight_unit="kg",
+            gender=None,
+            profile_picture_url=None
+        )
+        # Convert None to default image URL
+        default_response.profile_picture_url = convert_relative_to_complete_url(None)
+        
         return api_response(
             success=True,
             message="No profile found. Returning default profile.",
-            data=ProfileResponse(
-                user_id=current_user.id,
-                first_name=current_user.first_name,
-                last_name=current_user.last_name,
-                date_of_birth=None,
-                height=None,
-                height_unit="cm",
-                weight=None,
-                weight_unit="kg",
-                gender=None,
-                profile_picture_url=None
-            )
+            data=default_response
         )
     # Add first_name and last_name from user data
     try:

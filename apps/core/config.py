@@ -46,9 +46,12 @@ class Settings(BaseSettings):
     
     # MEDIA STORAGE
     MEDIA_ROOT: str = str(Path("media").absolute())
+    STATIC_ROOT: str = str(Path("static").absolute())
     MEDIA_URL: str = "/media/"
+    STATIC_URL: str = "/static/"
     ALLOWED_IMAGE_TYPES: List[str] = ["image/jpeg", "image/png", "image/jpg"]
     MAX_IMAGE_SIZE: int = 5 * 1024 * 1024  # 5MB
+    DEFAULT_PROFILE_IMAGE: str = "/static/images/user.png"
     
     # BASE URL
     BE_BASE_URL: str = "http://localhost:8000"

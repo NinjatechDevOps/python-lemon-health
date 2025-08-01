@@ -17,7 +17,7 @@ uploads/*
 # Ignore all files in the media directory
 media/*
 
-# Ignore all files in the static directory
-static/*
+# # Ignore all files in the static directory
+# static/*
 
 .env.docker
