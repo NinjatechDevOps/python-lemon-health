@@ -31,30 +31,55 @@ class BaseResponse(BaseModel, Generic[T]):
     data: Optional[T] = None
 
 class ConversationResponse(BaseModel):
-    chat_id: str
+    conv_id: str  # Changed from chat_id
     prompt_id: int
     created_at: str
     updated_at: str
 
 class ChatMessageResponse(BaseModel):
     id: int
+    mid: str      # Message ID (UUID)
     role: ChatRole
     content: str
     created_at: str
 
 class ChatHistoryResponse(BaseModel):
-    chat_id: str
-    messages: List[ChatMessageResponse]
+    conv_id: str  # Changed from chat_id
+    prompt_type: PromptType  # Added prompt type
     title: str | None = None
+    messages: List[ChatMessageResponse]
+   
 
 class ChatRequest(BaseModel):
-    chat_id: str
+    conv_id: str  # Changed from chat_id
     prompt_id: str
     user_query: str
     streamed: Optional[bool] = False
 
 class ChatResponse(BaseModel):
-    chat_id: str
+    conv_id: str  # Changed from chat_id
     user_query: str
     response: str
-    streamed: Optional[bool] = False 
+    streamed: Optional[bool] = False
+
+# Updated schemas for chat history list API - conversation list only
+class ConversationListItem(BaseModel):
+    conv_id: str  # Changed from chat_id
+    title: Optional[str] = None
+    prompt_type: PromptType
+    message_count: int  # Number of messages in conversation
+    last_message_preview: Optional[str] = None  # Preview of last message
+    created_at: str
+    updated_at: str
+
+class PaginationInfo(BaseModel):
+    page: int
+    per_page: int
+    total: int
+    total_pages: int
+    has_next: bool
+    has_prev: bool
+
+class ChatHistoryListResponse(BaseModel):
+    conversations: List[ConversationListItem]
+    pagination: PaginationInfo 
