@@ -62,19 +62,25 @@ PROFILE_COMPLETION_TEMPLATE = """To create a personalized nutrition plan, I need
 
 Please provide the missing information so I can create a personalized plan for you."""
 
-# Future Prompts (for upcoming features)
-DOCUMENT_ANALYSIS_PROMPT = """You are a health document analysis assistant. Analyze the provided document and extract relevant health information.
+# Document Analysis Prompts
+DOCUMENT_ANALYSIS_PROMPT = """You are a document analysis assistant. Analyze the provided document content and extract three relevant tags for categorizing this document.
 
 Guidelines:
-1. Identify key health metrics, medications, conditions, and recommendations
-2. Summarize the document in a clear, structured format
-3. Highlight any important warnings or follow-up requirements
-4. Provide actionable insights based on the document content
+- Generate exactly 3 relevant tags (single words or short phrases)
+- Tags should be descriptive and help categorize the document
+- Focus on the main topics, themes, or document type
+- Make tags specific enough to be useful for organization
+- Avoid generic tags like "document" or "file"
 
-Document content: {document_content}
+Document content:
+{content}
 
-Please provide a comprehensive analysis of this health document."""
+Please provide your analysis in the following JSON format:
+{{
+    "tags": ["tag1", "tag2", "tag3"]
+}}"""
 
+# Future Prompts (for upcoming features)
 EXERCISE_RECOMMENDATION_PROMPT = """You are a fitness and exercise recommendation assistant. Based on the user's profile and goals, provide personalized exercise recommendations.
 
 User Profile: {user_profile}
