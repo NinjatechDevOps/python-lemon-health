@@ -104,9 +104,14 @@ def convert_relative_to_complete_url(relative_url: Optional[str]) -> Optional[st
         
     Returns:
         Complete URL like "http://localhost:8000/media/profile_pictures/filename.jpg"
+        or default image URL if relative_url is None
     """
     if not relative_url:
-        return None
+        # Return default profile image URL
+        default_image = settings.DEFAULT_PROFILE_IMAGE
+        if default_image.startswith('/'):
+            default_image = default_image[1:]
+        return f"{settings.BE_BASE_URL}/{default_image}"
     
     # Remove leading slash if present to avoid double slashes
     if relative_url.startswith('/'):
