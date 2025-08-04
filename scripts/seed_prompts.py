@@ -40,7 +40,7 @@ async def seed_prompts():
                 "description": "Book appointments and services",
                 "prompt_type": PromptType.BOOKING,
                 "system_prompt": "You are Lemon, a booking assistant. Help users book appointments, services, and manage their schedule. Be helpful and efficient in scheduling.",
-                "icon_path": "/static/prompts_icon/fi_7170401.png"  # Calendar icon
+                "icon_path": "/static/prompts_icon/fi_8304797.png"  # Calendar icon (swapped)
             },
             {
                 "name": "Shop",
@@ -75,7 +75,7 @@ async def seed_prompts():
                 "description": "Manage your prescriptions",
                 "prompt_type": PromptType.PRESCRIPTIONS,
                 "system_prompt": "You are Lemon, a prescription management assistant. Help users understand and manage their prescriptions and medications safely.",
-                "icon_path": "/static/prompts_icon/fi_8304797.png"  # Pill bottle icon
+                "icon_path": "/static/prompts_icon/fi_7170401.png"  # Pill bottle/briefcase icon (swapped)
             }
         ]
         

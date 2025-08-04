@@ -15,6 +15,7 @@ from apps.chat.schemas import (
 )
 from apps.chat.document_service import DocumentService
 from apps.chat.chat_service import ChatService
+from apps.chat.utils import convert_file_path_to_complete_url
 import asyncio
 import math
 import json
@@ -182,7 +183,8 @@ async def upload_document(
                 file_size=document.file_size,
                 file_type=document.file_type,
                 uploaded_at=str(document.uploaded_at),
-                analysis_status="pending"
+                analysis_status="pending",
+                pdf_url=convert_file_path_to_complete_url(document.file_path)
             )
         }
         
@@ -240,6 +242,7 @@ async def get_user_documents(
                     file_size=doc.file_size,
                     file_type=doc.file_type,
                     uploaded_at=str(doc.uploaded_at),
+                    pdf_url=convert_file_path_to_complete_url(doc.file_path),
                     analysis=analysis_response
                 )
             )
