@@ -91,6 +91,7 @@ class ChatHistoryListResponse(BaseModel):
 class DocumentUploadResponse(BaseModel):
     doc_id: str
     original_filename: str
+    llm_generated_filename: Optional[str] = None
     file_size: int
     file_type: DocumentType
     uploaded_at: str
@@ -108,9 +109,10 @@ class DocumentAnalysisResponse(BaseModel):
 class DocumentResponse(BaseModel):
     doc_id: str
     original_filename: str
+    llm_generated_filename: Optional[str] = None
     file_size: int
     file_type: DocumentType
-    uploaded_at: str
+    uploaded_at: str 
     analysis: Optional[DocumentAnalysisResponse] = None
 
 class DocumentListResponse(BaseModel):

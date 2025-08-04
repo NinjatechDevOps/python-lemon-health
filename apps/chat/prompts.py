@@ -63,20 +63,23 @@ PROFILE_COMPLETION_TEMPLATE = """To create a personalized nutrition plan, I need
 Please provide the missing information so I can create a personalized plan for you."""
 
 # Document Analysis Prompts
-DOCUMENT_ANALYSIS_PROMPT = """You are a document analysis assistant. Analyze the provided document content and extract three relevant tags for categorizing this document.
+DOCUMENT_ANALYSIS_PROMPT = """You are a document analysis assistant. Analyze the provided document content and generate a descriptive filename and three relevant tags for categorizing this document.
 
 Guidelines:
+- Generate a descriptive filename (max 50 characters) that reflects the main content/topic
 - Generate exactly 3 relevant tags (single words or short phrases)
 - Tags should be descriptive and help categorize the document
 - Focus on the main topics, themes, or document type
 - Make tags specific enough to be useful for organization
 - Avoid generic tags like "document" or "file"
+- Filename should be clear, professional, and descriptive
 
 Document content:
 {content}
 
 Please provide your analysis in the following JSON format:
 {{
+    "filename": "descriptive_filename.pdf",
     "tags": ["tag1", "tag2", "tag3"]
 }}"""
 

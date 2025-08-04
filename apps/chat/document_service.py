@@ -1,15 +1,16 @@
 import json
 import uuid
 import mimetypes
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pathlib import Path
 from datetime import datetime, timezone
 import asyncio
 
 from fastapi import UploadFile, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
+from apps.chat.models import Document
 import PyPDF2
 
 from apps.chat.models import Document, DocumentAnalysis, DocumentType
@@ -75,6 +76,7 @@ class DocumentService:
         document = Document(
             user_id=user_id,
             original_filename=file.filename or 'unknown',
+            llm_generated_filename=file.filename or 'unknown',  # Set initial filename to original
             stored_filename=unique_filename,
             file_path=str(file_path),
             file_size=file_size,
@@ -123,13 +125,15 @@ class DocumentService:
 
             # Process with LLM using optimized parameters for document analysis
             response = await process_query_with_prompt(
-                user_message="Please analyze this document and provide tags.",
+                user_message="Please analyze this document and provide filename and tags.",
                 system_prompt=system_prompt,
                 conversation_history=[],
                 user=user,
                 temperature=0.3,  # Lower temperature for more consistent analysis
                 max_tokens=1500   # More tokens for detailed analysis
             )
+            
+            print(f"DEBUG: LLM Response: {response}")
             
             # Parse JSON response
             try:
@@ -140,13 +144,21 @@ class DocumentService:
                 else:
                     analysis_data = json.loads(response)
                 
-                return {
+                print(f"DEBUG: Parsed analysis data: {analysis_data}")
+                
+                result = {
+                    "filename": analysis_data.get("filename", "document.pdf"),
                     "tags": analysis_data.get("tags", [])
                 }
                 
+                print(f"DEBUG: Returning result: {result}")
+                return result
+                
             except (json.JSONDecodeError, KeyError) as e:
-                # Fallback: create basic tags
+                print(f"DEBUG: JSON parsing error: {e}")
+                # Fallback: create basic filename and tags
                 return {
+                    "filename": "document.pdf",
                     "tags": ["document", "analysis", "content"]
                 }
                 
@@ -167,12 +179,17 @@ class DocumentService:
             
             # Analyze content
             analysis_result = await DocumentService.analyze_document_content(extracted_content, user)
+            print(f"DEBUG: Analysis result: {analysis_result}")
             
             # Update analysis record
             analysis.extracted_content = extracted_content
             analysis.generated_tags = json.dumps(analysis_result["tags"])
             analysis.analysis_status = "completed"
             analysis.updated_at = datetime.now(timezone.utc)
+            
+            # Update document with LLM-generated filename
+            document.llm_generated_filename = analysis_result["filename"]
+            print(f"DEBUG: Updated document.llm_generated_filename to: {analysis_result['filename']}")
             
             await db.commit()
             await db.refresh(analysis)
@@ -197,22 +214,34 @@ class DocumentService:
         
         async with AsyncSessionLocal() as db:
             try:
+                # Re-query the document in the new session
+                result = await db.execute(
+                    select(Document).where(Document.id == document.id)
+                )
+                document_in_session = result.scalar_one()
+                print(f"DEBUG: Re-queried document in new session, id: {document_in_session.id}")
+                
                 # Update status to processing
-                analysis = await DocumentService.get_or_create_analysis(document.id, db)
+                analysis = await DocumentService.get_or_create_analysis(document_in_session.id, db)
                 analysis.analysis_status = "processing"
                 await db.commit()
                 
                 # Extract content
-                extracted_content = await DocumentService.extract_text_from_document(document)
+                extracted_content = await DocumentService.extract_text_from_document(document_in_session)
                 
                 # Analyze content
                 analysis_result = await DocumentService.analyze_document_content(extracted_content, user)
+                print(f"DEBUG: Async analysis result: {analysis_result}")
                 
                 # Update analysis record
                 analysis.extracted_content = extracted_content
                 analysis.generated_tags = json.dumps(analysis_result["tags"])
                 analysis.analysis_status = "completed"
                 analysis.updated_at = datetime.now(timezone.utc)
+                
+                # Update document with LLM-generated filename
+                document_in_session.llm_generated_filename = analysis_result["filename"]
+                print(f"DEBUG: Async updated document.llm_generated_filename to: {analysis_result['filename']}")
                 
                 await db.commit()
                 await db.refresh(analysis)
@@ -247,20 +276,36 @@ class DocumentService:
         db: AsyncSession, 
         user_id: int, 
         page: int = 1, 
-        per_page: int = 20
+        per_page: int = 20,
+        search: Optional[str] = None
     ) -> tuple[List[Document], int]:
-        """Get user's documents with pagination"""
-        # Get total count
-        count_query = select(Document).where(Document.user_id == user_id)
-        total_result = await db.execute(count_query)
-        total = len(total_result.scalars().all())
-        
-        # Get documents with pagination and analysis relationship
-        offset = (page - 1) * per_page
-        documents_query = (
+        """Get user's documents with pagination and search"""
+        # Build base query for documents
+        base_query = (
             select(Document)
             .options(selectinload(Document.analysis))
             .where(Document.user_id == user_id)
+        )
+        
+        # Add search filter if provided
+        if search:
+            # Search in original filename and LLM-generated filename only
+            from sqlalchemy import or_
+            search_filter = or_(
+                Document.original_filename.ilike(f"%{search}%"),
+                Document.llm_generated_filename.ilike(f"%{search}%")
+            )
+            base_query = base_query.where(search_filter)
+        
+        # Get total count for pagination
+        count_query = select(func.count()).select_from(base_query.subquery())
+        total_result = await db.execute(count_query)
+        total = total_result.scalar()
+        
+        # Get documents with pagination
+        offset = (page - 1) * per_page
+        documents_query = (
+            base_query
             .order_by(Document.uploaded_at.desc())
             .offset(offset)
             .limit(per_page)

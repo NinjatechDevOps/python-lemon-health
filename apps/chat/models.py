@@ -69,6 +69,7 @@ class Document(Base):
     doc_id: Mapped[str] = mapped_column(UUID(as_uuid=False), unique=True, index=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    llm_generated_filename: Mapped[str] = mapped_column(String(255), nullable=True)  # LLM-generated descriptive filename
     stored_filename: Mapped[str] = mapped_column(String(255), nullable=False)  # Unique filename on server
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)  # Full path to file
     file_size: Mapped[int] = mapped_column(Integer, nullable=False)  # Size in bytes

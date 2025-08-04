@@ -178,6 +178,7 @@ async def upload_document(
             "data": DocumentUploadResponse(
                 doc_id=document.doc_id,
                 original_filename=document.original_filename,
+                llm_generated_filename=document.llm_generated_filename,
                 file_size=document.file_size,
                 file_type=document.file_type,
                 uploaded_at=str(document.uploaded_at),
@@ -201,14 +202,16 @@ async def upload_document(
 async def get_user_documents(
     page: int = Query(1, ge=1, description="Page number (starts from 1)"),
     per_page: int = Query(20, ge=1, le=100, description="Number of documents per page (max 100)"),
+    search: Optional[str] = Query(None, description="Search documents by original filename or LLM-generated filename"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_verified_user)
 ):
     """
     Get all documents uploaded by the current user with pagination.
+    Supports search by original filename or LLM-generated filename.
     """
     try:
-        documents, total = await DocumentService.get_user_documents(db, current_user.id, page, per_page)
+        documents, total = await DocumentService.get_user_documents(db, current_user.id, page, per_page, search)
         
         # Calculate pagination info
         total_pages = math.ceil(total / per_page) if total > 0 else 0
@@ -233,6 +236,7 @@ async def get_user_documents(
                 DocumentResponse(
                     doc_id=doc.doc_id,
                     original_filename=doc.original_filename,
+                    llm_generated_filename=doc.llm_generated_filename,
                     file_size=doc.file_size,
                     file_type=doc.file_type,
                     uploaded_at=str(doc.uploaded_at),
