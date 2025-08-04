@@ -246,7 +246,9 @@ class ProfileCompletionService:
             user_message=user_message,
             system_prompt=system_prompt,
             conversation_history=conversation_history,
-            user=user
+            user=user,
+            temperature=0.3,  # Lower temperature for more consistent data extraction
+            max_tokens=800    # Sufficient tokens for profile data
         )
         
         # Parse JSON response with improved error handling
@@ -440,7 +442,9 @@ class ProfileCompletionService:
             user_message=user_message,
             system_prompt=system_prompt,
             conversation_history=conversation_history,
-            user=user
+            user=user,
+            temperature=0.5,  # Moderate temperature for friendly profile requests
+            max_tokens=600    # Sufficient tokens for profile completion message
         )
         
         return response

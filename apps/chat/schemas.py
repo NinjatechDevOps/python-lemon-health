@@ -15,11 +15,15 @@ class ChatRole(str, Enum):
     ASSISTANT = "assistant"
     SYSTEM = "system"
 
+class DocumentType(str, Enum):
+    PDF = "pdf"
+
 class PromptResponse(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
     prompt_type: PromptType
+    icon_path: Optional[str] = None  # Path to icon image
 
 class PromptListResponse(BaseModel):
     prompts: List[PromptResponse]
@@ -82,4 +86,39 @@ class PaginationInfo(BaseModel):
 
 class ChatHistoryListResponse(BaseModel):
     conversations: List[ConversationListItem]
-    pagination: PaginationInfo 
+    pagination: PaginationInfo
+
+# Document Upload Schemas
+class DocumentUploadResponse(BaseModel):
+    doc_id: str
+    original_filename: str
+    llm_generated_filename: Optional[str] = None
+    file_size: int
+    file_type: DocumentType
+    uploaded_at: str
+    analysis_status: str
+
+class DocumentAnalysisResponse(BaseModel):
+    analysis_id: str
+    extracted_content: Optional[str] = None
+    generated_tags: Optional[List[str]] = None
+    analysis_status: str
+    error_message: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+class DocumentResponse(BaseModel):
+    doc_id: str
+    original_filename: str
+    llm_generated_filename: Optional[str] = None
+    file_size: int
+    file_type: DocumentType
+    uploaded_at: str 
+    analysis: Optional[DocumentAnalysisResponse] = None
+
+class DocumentListResponse(BaseModel):
+    documents: List[DocumentResponse]
+    pagination: PaginationInfo
+
+class DocumentAnalysisRequest(BaseModel):
+    doc_id: str 
