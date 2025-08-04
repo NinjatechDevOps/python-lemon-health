@@ -23,6 +23,7 @@ class PromptResponse(BaseModel):
     name: str
     description: Optional[str] = None
     prompt_type: PromptType
+    icon_path: Optional[str] = None  # Path to icon image
 
 class PromptListResponse(BaseModel):
     prompts: List[PromptResponse]

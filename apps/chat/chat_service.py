@@ -17,6 +17,7 @@ from apps.chat.schemas import (
 )
 from apps.chat.llm_connector import process_query_with_prompt
 from apps.chat.profile_completion import ProfileCompletionService
+from apps.chat.utils import convert_icon_path_to_complete_url
 
 
 class ChatService:
@@ -33,7 +34,8 @@ class ChatService:
                     "id": p.id,
                     "name": p.name,
                     "description": p.description,
-                    "prompt_type": p.prompt_type
+                    "prompt_type": p.prompt_type,
+                    "icon_path": convert_icon_path_to_complete_url(p.icon_path)
                 }
                 for p in prompt_objs
             ]
