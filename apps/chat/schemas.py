@@ -97,6 +97,7 @@ class DocumentUploadResponse(BaseModel):
     file_type: DocumentType
     uploaded_at: str
     analysis_status: str
+    pdf_url: Optional[str] = None  # Complete URL to view/download PDF
 
 class DocumentAnalysisResponse(BaseModel):
     analysis_id: str
@@ -114,6 +115,7 @@ class DocumentResponse(BaseModel):
     file_size: int
     file_type: DocumentType
     uploaded_at: str 
+    pdf_url: Optional[str] = None  # Complete URL to view/download PDF
     analysis: Optional[DocumentAnalysisResponse] = None
 
 class DocumentListResponse(BaseModel):
