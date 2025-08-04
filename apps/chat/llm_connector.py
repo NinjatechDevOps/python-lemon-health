@@ -24,7 +24,8 @@ async def process_query_with_prompt(
     user_message: str, 
     system_prompt: str, 
     conversation_history: List[Dict[str, str]],
-    user
+    user,
+    **kwargs
 ) -> str:
     """
     Process a user query with a specific prompt and conversation history
@@ -34,6 +35,7 @@ async def process_query_with_prompt(
         system_prompt: The system prompt to use
         conversation_history: Previous messages in the conversation
         user: The user object
+        **kwargs: Additional parameters to pass to the LLM (e.g., temperature, max_tokens)
         
     Returns:
         The LLM's response text
@@ -50,9 +52,9 @@ async def process_query_with_prompt(
     # Add the current user message
     messages.append({"role": "user", "content": user_message})
     
-    # Process the query through the LLM provider
+    # Process the query through the LLM provider with additional parameters
     try:
-        response = llm_provider.chat(messages)
+        response = llm_provider.chat(messages, **kwargs)
         return response
     except Exception as e:
         logger.error(f"Error processing query with LLM: {str(e)}")

@@ -37,7 +37,7 @@ class OpenAILLM(BaseLLMProvider):
                 return "OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable."
             
             # Set default parameters
-            temperature = kwargs.get("temperature", 0.7)
+            temperature = kwargs.get("temperature", 0.5)
             max_tokens = kwargs.get("max_tokens", 1000)
             
             # Make the API call

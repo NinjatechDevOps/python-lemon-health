@@ -121,12 +121,14 @@ class DocumentService:
             # Use the prompt from prompts module
             system_prompt = DOCUMENT_ANALYSIS_PROMPT.format(content=content[:5000])  # Limit content length
 
-            # Process with LLM
+            # Process with LLM using optimized parameters for document analysis
             response = await process_query_with_prompt(
                 user_message="Please analyze this document and provide tags.",
                 system_prompt=system_prompt,
                 conversation_history=[],
-                user=user
+                user=user,
+                temperature=0.3,  # Lower temperature for more consistent analysis
+                max_tokens=1500   # More tokens for detailed analysis
             )
             
             # Parse JSON response

@@ -225,7 +225,9 @@ class ChatService:
             user_message=chat_request.user_query,
             system_prompt=system_prompt,
             conversation_history=history_msgs,
-            user=current_user
+            user=current_user,
+            temperature=0.7,  # Balanced creativity for general chat
+            max_tokens=1000   # Reasonable response length
         )
         
         # Store assistant message
@@ -325,7 +327,9 @@ class ChatService:
                     user_message=chat_request.user_query,
                     system_prompt=system_prompt,
                     conversation_history=history_msgs,
-                    user=current_user
+                    user=current_user,
+                    temperature=0.7,  # Balanced creativity for general chat
+                    max_tokens=1000   # Reasonable response length
                 )
                 
                 # Store assistant message
