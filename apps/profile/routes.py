@@ -106,6 +106,13 @@ async def update_profile(
             profile = await ProfileService.create_profile(db, profile_data, current_user.id)
             msg = "Profile created successfully"
             print(f"DEBUG - Profile created: {profile.id}")
+            if profile_picture:
+                success, message, updated_profile = await ProfileService.update_profile_picture(
+                    db=db, file=profile_picture, user_id=current_user.id
+                )
+                if not success:
+                    return api_error_response(status_code=400, message=message)
+                profile_data.profile_picture_url = updated_profile.profile_picture_url
         else:
             # Handle profile picture
             if profile_picture:
