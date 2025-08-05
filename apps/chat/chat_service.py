@@ -18,10 +18,202 @@ from apps.chat.schemas import (
 from apps.chat.llm_connector import process_query_with_prompt
 from apps.chat.profile_completion import ProfileCompletionService
 from apps.chat.utils import convert_icon_path_to_complete_url
+from apps.chat.prompts import (
+    DEFAULT_PROMPT_GUARDRAILS, DEFAULT_PROMPT_SYSTEM, QUERY_CLASSIFICATION_PROMPT, 
+    DEFAULT_ALLOWED_PROMPT_TYPES, DEFAULT_PROMPT_TYPE
+)
 
 
 class ChatService:
     """Service for handling chat operations and conversation management"""
+    
+    # Default prompt types that are allowed (configurable for future expansion)
+    DEFAULT_ALLOWED_PROMPT_TYPES = DEFAULT_ALLOWED_PROMPT_TYPES
+    
+    @staticmethod
+    async def classify_query_with_llm(user_query: str, user) -> bool:
+        """
+        Use LLM to classify if user query is related to default prompts (nutrition/exercise)
+        
+        Args:
+            user_query: User's query string
+            user: User object for LLM context
+            
+        Returns:
+            bool: True if query is related to nutrition or exercise
+        """
+        try:
+            # Use LLM to classify the query
+            classification_prompt = QUERY_CLASSIFICATION_PROMPT.format(user_query=user_query)
+            
+            response = await process_query_with_prompt(
+                user_message=user_query,
+                system_prompt=classification_prompt,
+                conversation_history=[],  # No history needed for classification
+                user=user,
+                temperature=0.1,  # Low temperature for consistent classification
+                max_tokens=10     # Only need "ALLOWED" or "DENIED"
+            )
+            
+            # Clean and check response
+            response_clean = response.strip().upper()
+            print(f"DEBUG: LLM Classification Response: '{response_clean}' for query: '{user_query}'")
+            
+            return response_clean == "ALLOWED"
+            
+        except Exception as e:
+            print(f"DEBUG: Error in LLM classification: {e}")
+            # Fallback to manual classification if LLM fails
+            return ChatService._fallback_query_classification(user_query)
+    
+    @staticmethod
+    def _fallback_query_classification(user_query: str) -> bool:
+        """
+        Fallback manual classification if LLM classification fails
+        
+        Args:
+            user_query: User's query string
+            
+        Returns:
+            bool: True if query is related to nutrition or exercise
+        """
+        query_lower = user_query.lower()
+        
+        # Nutrition-related keywords
+        nutrition_keywords = [
+            'nutrition', 'diet', 'food', 'meal', 'eating', 'calorie', 'protein', 'carb', 'fat',
+            'vitamin', 'mineral', 'supplement', 'healthy', 'weight loss', 'weight gain',
+            'muscle gain', 'energy', 'digestion', 'metabolism', 'breakfast', 'lunch', 'dinner',
+            'snack', 'recipe', 'cooking', 'ingredient', 'nutrient', 'fiber', 'antioxidant'
+        ]
+        
+        # Exercise-related keywords
+        exercise_keywords = [
+            'exercise', 'workout', 'fitness', 'training', 'gym', 'cardio', 'strength',
+            'muscle', 'weight training', 'running', 'walking', 'cycling', 'swimming',
+            'yoga', 'pilates', 'stretching', 'flexibility', 'endurance', 'stamina',
+            'sports', 'activity', 'physical', 'movement', 'burn', 'calories', 'reps',
+            'sets', 'routine', 'plan', 'program'
+        ]
+        
+        # Check if query contains any nutrition or exercise keywords
+        for keyword in nutrition_keywords + exercise_keywords:
+            if keyword in query_lower:
+                return True
+        
+        return False
+    
+    @staticmethod
+    async def get_default_prompts(db: AsyncSession) -> Tuple[Prompt, Prompt]:
+        """
+        Get nutrition and exercise prompts for default prompt functionality
+        
+        Args:
+            db: Database session
+            
+        Returns:
+            Tuple[Prompt, Prompt]: (nutrition_prompt, exercise_prompt)
+        """
+        # Use configurable allowed prompt types
+        allowed_types = ChatService.DEFAULT_ALLOWED_PROMPT_TYPES
+        
+        result = await db.execute(
+            select(Prompt).where(Prompt.prompt_type.in_(allowed_types))
+        )
+        prompts = result.scalars().all()
+        
+        # Create a dictionary to store prompts by type
+        prompts_by_type = {}
+        for prompt in prompts:
+            prompts_by_type[prompt.prompt_type] = prompt
+        
+        # Check if all required prompts are found
+        missing_prompts = []
+        for prompt_type in allowed_types:
+            if prompt_type not in prompts_by_type:
+                missing_prompts.append(prompt_type)
+        
+        if missing_prompts:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Default prompts not found: {missing_prompts}. Available prompts: {[p.prompt_type for p in prompts]}"
+            )
+        
+        # Return the first two prompts (nutrition and exercise for now)
+        prompt_list = list(prompts_by_type.values())
+        return prompt_list[0], prompt_list[1]  # nutrition, exercise
+    
+    @staticmethod
+    async def create_default_conversation(
+        conv_id: str,
+        user_id: int,
+        user_query: str,
+        db: AsyncSession
+    ) -> Tuple[Conversation, str]:
+        """
+        Create a conversation for default prompt functionality
+        
+        Args:
+            conv_id: Conversation ID
+            user_id: User ID
+            user_query: User's query
+            db: Database session
+            
+        Returns:
+            Tuple[Conversation, str]: (conversation, system_prompt)
+        """
+        # Try to get default prompt from database first
+        default_prompt = await ChatService.get_default_prompt_from_db(db)
+        
+        if default_prompt:
+            # Use database-stored default prompt
+            print(f"DEBUG: Using database-stored default prompt: {default_prompt.name}")
+            
+            # Create conversation with database default prompt
+            title = user_query[:60] if user_query else "Default Chat"
+            conversation = Conversation(
+                conv_id=conv_id,
+                user_id=user_id,
+                prompt_id=default_prompt.id,
+                title=title
+            )
+            conversation.prompt = default_prompt
+            db.add(conversation)
+            await db.commit()
+            await db.refresh(conversation)
+            
+            # Use database system prompt with guardrails
+            guardrails = DEFAULT_PROMPT_GUARDRAILS.format(user_query=user_query)
+            system_prompt = f"{default_prompt.system_prompt}\n\n{guardrails}"
+            
+        else:
+            # Fallback to hardcoded approach using nutrition prompt
+            print(f"DEBUG: Using hardcoded default prompt approach")
+            
+            # Get nutrition and exercise prompts for fallback
+            nutrition_prompt, exercise_prompt = await ChatService.get_default_prompts(db)
+            
+            # Use nutrition prompt as the base (since it's more comprehensive)
+            base_prompt = nutrition_prompt
+            
+            # Create conversation with nutrition prompt
+            title = user_query[:60] if user_query else "Default Chat"
+            conversation = Conversation(
+                conv_id=conv_id,
+                user_id=user_id,
+                prompt_id=base_prompt.id,
+                title=title
+            )
+            conversation.prompt = base_prompt
+            db.add(conversation)
+            await db.commit()
+            await db.refresh(conversation)
+            
+            # Create combined system prompt for default functionality
+            guardrails = DEFAULT_PROMPT_GUARDRAILS.format(user_query=user_query)
+            system_prompt = DEFAULT_PROMPT_SYSTEM.format(guardrails=guardrails)
+        
+        return conversation, system_prompt
     
     @staticmethod
     async def get_prompts(db: AsyncSession) -> List[Dict[str, Any]]:
@@ -58,9 +250,10 @@ class ChatService:
     async def get_or_create_conversation(
         conv_id: str, 
         user_id: int, 
-        prompt_id: str, 
+        prompt_id: Optional[str], 
         user_query: str,
-        db: AsyncSession
+        db: AsyncSession,
+        user: Optional[User] = None
     ) -> Tuple[Conversation, Prompt]:
         """Get existing conversation or create new one"""
         # Try to get existing conversation (eagerly load prompt)
@@ -72,6 +265,24 @@ class ChatService:
         conversation = result.scalar_one_or_none()
         
         if not conversation:
+            # Handle default prompt case (prompt_id is None, "default", or empty string)
+            if prompt_id is None or prompt_id == "default" or prompt_id == "":
+                # Use LLM to classify if query is related to nutrition or exercise
+                if not await ChatService.classify_query_with_llm(user_query, user):
+                    # Query is not related to nutrition/exercise, create denial response
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Query not related to Nutrition or Exercise. Please ask nutrition or exercise related questions."
+                    )
+                
+                # Create default conversation
+                conversation, system_prompt = await ChatService.create_default_conversation(
+                    conv_id, user_id, user_query, db
+                )
+                # Store the custom system prompt for later use
+                conversation._custom_system_prompt = system_prompt
+                return conversation, conversation.prompt
+            
             # Find prompt by prompt_type
             prompt_result = await db.execute(
                 select(Prompt).where(Prompt.prompt_type == prompt_id)
@@ -169,7 +380,8 @@ class ChatService:
             user_id=current_user.id,
             prompt_id=chat_request.prompt_id,
             user_query=chat_request.user_query,
-            db=db
+            db=db,
+            user=current_user # Pass current_user to get_or_create_conversation
         )
         
         # Store user message
@@ -190,7 +402,7 @@ class ChatService:
             user_message=chat_request.user_query,
             conversation_history=history_msgs,
             user=current_user,
-            prompt_type=chat_request.prompt_id
+            prompt_type=chat_request.prompt_id if chat_request.prompt_id and chat_request.prompt_id != "" else "default"  # Use "default" for default prompts
         )
         
         # If profile is incomplete and user is not providing profile info, return the profile completion message
@@ -215,7 +427,7 @@ class ChatService:
         
         # Profile is complete or user provided profile info - proceed with LLM
         # Get system prompt and add profile context if available
-        system_prompt = prompt.system_prompt
+        system_prompt = getattr(conversation, '_custom_system_prompt', None) or prompt.system_prompt
         
         # Add user profile context to the system prompt
         profile_context = await ProfileCompletionService.get_user_profile_context(db, current_user.id)
@@ -271,7 +483,8 @@ class ChatService:
             user_id=current_user.id,
             prompt_id=chat_request.prompt_id,
             user_query=chat_request.user_query,
-            db=db
+            db=db,
+            user=current_user # Pass current_user to get_or_create_conversation
         )
         
         # Store user message
@@ -292,7 +505,7 @@ class ChatService:
             user_message=chat_request.user_query,
             conversation_history=history_msgs,
             user=current_user,
-            prompt_type=chat_request.prompt_id
+            prompt_type=chat_request.prompt_id if chat_request.prompt_id and chat_request.prompt_id != "" else "default"  # Use "default" for default prompts
         )
         
         # If profile is incomplete and user is not providing profile info, return the profile completion message
@@ -311,7 +524,7 @@ class ChatService:
         
         # Profile is complete or user provided profile info - proceed with LLM
         # Get system prompt and add profile context if available
-        system_prompt = prompt.system_prompt
+        system_prompt = getattr(conversation, '_custom_system_prompt', None) or prompt.system_prompt
         
         # Add user profile context to the system prompt
         profile_context = await ProfileCompletionService.get_user_profile_context(db, current_user.id)
@@ -350,6 +563,50 @@ class ChatService:
                 yield f"Error: {str(e)}"
                 
         return StreamingResponse(llm_stream(), media_type="text/plain")
+    
+    @staticmethod
+    async def get_default_prompt_from_db(db: AsyncSession) -> Optional[Prompt]:
+        """
+        Get default prompt from database if it exists
+        
+        Args:
+            db: Database session
+            
+        Returns:
+            Optional[Prompt]: Default prompt from DB, or None if not found
+        """
+        try:
+            result = await db.execute(
+                select(Prompt).where(Prompt.prompt_type == DEFAULT_PROMPT_TYPE)
+            )
+            default_prompt = result.scalar_one_or_none()
+            return default_prompt
+        except Exception as e:
+            print(f"DEBUG: Error getting default prompt from DB: {e}")
+            return None
+    
+    @staticmethod
+    async def get_default_system_prompt(db: AsyncSession) -> str:
+        """
+        Get default system prompt - tries DB first, falls back to hardcoded
+        
+        Args:
+            db: Database session
+            
+        Returns:
+            str: Default system prompt
+        """
+        # Try to get default prompt from database
+        default_prompt = await ChatService.get_default_prompt_from_db(db)
+        
+        if default_prompt and default_prompt.system_prompt:
+            # Use database-stored default prompt
+            print(f"DEBUG: Using database-stored default prompt: {default_prompt.name}")
+            return default_prompt.system_prompt
+        else:
+            # Fallback to hardcoded default prompt
+            print(f"DEBUG: Using hardcoded default prompt")
+            return DEFAULT_PROMPT_SYSTEM
     
     @staticmethod
     async def get_chat_history_by_conv_id(

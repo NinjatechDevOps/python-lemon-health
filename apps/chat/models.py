@@ -15,6 +15,7 @@ class PromptType(str, Enum):
     EXERCISE = "exercise"
     DOCUMENTS = "documents"
     PRESCRIPTIONS = "prescriptions"
+    DEFAULT = "default"  # Special prompt type for default functionality
 
 class Prompt(Base):
     __tablename__ = "prompts"
