@@ -58,15 +58,78 @@ async def chat(
     Process a user query and return a response from the LLM.
     Supports both streaming and non-streaming responses.
     Includes profile completion functionality.
+    
+    For default prompts (when prompt_id is None):
+    - Uses LLM to classify if query is related to nutrition or exercise
+    - Other queries will be denied with a polite message from LLM
     """
     try:
+        # Handle default prompt case (prompt_id is "default", None, or empty string)
+        if chat_request.prompt_id is None or chat_request.prompt_id == "default" or chat_request.prompt_id == "":
+            # Use LLM to classify if query is related to nutrition or exercise
+            is_allowed = await ChatService.classify_query_with_llm(chat_request.user_query, current_user)
+            
+            if not is_allowed:
+                # Use LLM to generate denial response
+                from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
+                from apps.chat.llm_connector import process_query_with_prompt
+                
+                guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=chat_request.user_query)
+                
+                denial_response = await process_query_with_prompt(
+                    user_message=chat_request.user_query,
+                    system_prompt=guardrails_prompt,
+                    conversation_history=[],
+                    user=current_user,
+                    temperature=0.3,  # Low temperature for consistent denial messages
+                    max_tokens=100    # Short denial message
+                )
+                
+                return {
+                    "success": True,
+                    "message": "Query not related to Nutrition or Exercise",
+                    "data": ChatResponse(
+                        conv_id=chat_request.conv_id,
+                        user_query=chat_request.user_query,
+                        response=denial_response,
+                        streamed=False
+                    )
+                }
+        
         # Streamed or non-streamed response
         if chat_request.streamed:
             return await ChatService.process_streaming_chat(chat_request, current_user, db)
         else:
             result = await ChatService.process_chat_with_profile_completion(chat_request, current_user, db)
             return result
-    except HTTPException:
+    except HTTPException as e:
+        # Handle specific HTTP exceptions (like query not related to nutrition/exercise)
+        if e.status_code == 400 and "Query not related to Nutrition or Exercise" in str(e.detail):
+            # Use LLM to generate denial response
+            from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
+            from apps.chat.llm_connector import process_query_with_prompt
+            
+            guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=chat_request.user_query)
+            
+            denial_response = await process_query_with_prompt(
+                user_message=chat_request.user_query,
+                system_prompt=guardrails_prompt,
+                conversation_history=[],
+                user=current_user,
+                temperature=0.3,  # Low temperature for consistent denial messages
+                max_tokens=100    # Short denial message
+            )
+            
+            return {
+                "success": True,
+                "message": "Query not related to Nutrition or Exercise",
+                "data": ChatResponse(
+                    conv_id=chat_request.conv_id,
+                    user_query=chat_request.user_query,
+                    response=denial_response,
+                    streamed=False
+                )
+            }
         raise
     except Exception as e:
         return JSONResponse(

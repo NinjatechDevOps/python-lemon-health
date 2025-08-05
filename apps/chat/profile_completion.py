@@ -47,9 +47,24 @@ class ProfileCompletionService:
         """
         query_lower = user_query.lower()
         
-        # Check for profile-dependent keywords
-        for keyword in ProfileCompletionService.PROFILE_DEPENDENT_QUERIES:
-            if keyword in query_lower:
+        # Check for profile-dependent keywords (more flexible matching)
+        profile_dependent_patterns = [
+            r'\bweight\s*loss\b',
+            r'\bweight\s*gain\b', 
+            r'\blose\s*weight\b',
+            r'\bgain\s*weight\b',
+            r'\bmy\s*(?:nutrition|diet|exercise|workout|plan)\b',
+            r'\bpersonalized\b',
+            r'\bcustomized\b',
+            r'\btailored\b',
+            r'\bmy\s*(?:age|height|weight|gender)\b',
+            r'\bI\s*(?:am|want|need)\s*(?:to\s*)?(?:lose|gain|build)\b'
+        ]
+        
+        import re
+        for pattern in profile_dependent_patterns:
+            if re.search(pattern, query_lower):
+                print(f"DEBUG: Found profile-dependent pattern: {pattern}")
                 return True
         
         # Check for profile-independent keywords
@@ -58,8 +73,8 @@ class ProfileCompletionService:
                 return False
         
         # Default behavior based on prompt type
-        if prompt_type in ['nutrition', 'exercise']:
-            # For nutrition/exercise prompts, require profile unless explicitly general
+        if prompt_type in ['nutrition', 'exercise', 'default']:
+            # For nutrition/exercise/default prompts, require profile unless explicitly general
             return True
         else:
             # For other prompts (documents, prescriptions, etc.), profile not required
@@ -172,7 +187,7 @@ class ProfileCompletionService:
     
     @staticmethod
     def clean_extracted_data(extracted_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Clean and convert extracted data to proper types"""
+        """Clean and convert extracted data to proper types with validation"""
         cleaned_data = {}
         
         for field, value in extracted_data.items():
@@ -182,12 +197,26 @@ class ProfileCompletionService:
                     date_obj = ProfileCompletionService.convert_date_string(value)
                     if date_obj:
                         cleaned_data[field] = date_obj
-                elif field in ['height', 'weight']:
-                    # Convert to float
+                elif field == 'height':
+                    # Convert to float and validate range
                     try:
-                        cleaned_data[field] = float(value)
+                        height_val = float(value)
+                        if 100 <= height_val <= 250:  # Reasonable height range
+                            cleaned_data[field] = height_val
+                        else:
+                            print(f"DEBUG: Invalid height value: {height_val}, skipping")
                     except (ValueError, TypeError):
-                        pass
+                        print(f"DEBUG: Could not convert height value: {value}")
+                elif field == 'weight':
+                    # Convert to float and validate range
+                    try:
+                        weight_val = float(value)
+                        if 20 <= weight_val <= 300:  # Reasonable weight range
+                            cleaned_data[field] = weight_val
+                        else:
+                            print(f"DEBUG: Invalid weight value: {weight_val}, skipping")
+                    except (ValueError, TypeError):
+                        print(f"DEBUG: Could not convert weight value: {value}")
                 elif field == 'gender':
                     # Ensure gender is properly capitalized for schema validation
                     if isinstance(value, str):
@@ -516,13 +545,34 @@ class ProfileCompletionService:
         
         print(f"Profile complete: {is_complete}")
         print(f"Missing fields: {missing_fields}")
+        print(f"Profile required for query: {ProfileCompletionService.is_profile_required(user_message, prompt_type)}")
+        print(f"Query contains 'weight loss': {'weight loss' in user_message.lower()}")
         
         # Check if user is providing profile info (regardless of completeness)
         profile_keywords = ['age', 'years old', 'height', 'weight', 'kg', 'cm', 'male', 'female', 'other', 'gender']
         message_lower = user_message.lower()
         
-        has_profile_info = any(keyword in message_lower for keyword in profile_keywords)
+        # More sophisticated profile info detection
+        has_profile_info = False
+        
+        # Check for explicit profile information patterns
+        profile_patterns = [
+            r'\b\d+\s*(?:years?\s*old|y\.?o\.?)\b',  # age patterns
+            r'\b\d+\s*(?:kg|kilograms?)\b',  # weight patterns
+            r'\b\d+\s*(?:cm|centimeters?|ft|feet?)\b',  # height patterns
+            r'\b(male|female|other)\b',  # gender patterns
+            r'\bI\s+(?:am|weight|height|measure)\b',  # "I am/weight/height" patterns
+            r'\bmy\s+(?:age|weight|height|gender)\b',  # "my age/weight/height" patterns
+        ]
+        
+        import re
+        for pattern in profile_patterns:
+            if re.search(pattern, message_lower):
+                has_profile_info = True
+                break
+        
         print(f"User message contains profile info: {has_profile_info}")
+        print(f"Message: {user_message}")
         
         if has_profile_info:
             # User is providing profile info, try to extract and update
@@ -544,12 +594,24 @@ class ProfileCompletionService:
             print(f"Extracted data: {extracted_data}")
             
             if extracted_data:
-                # Update profile with extracted data
-                print("Updating profile with extracted data")
-                success = await ProfileCompletionService.update_profile(db, user_id, extracted_data)
-                if success:
-                    print("Profile updated successfully")
-                    return f"I've updated your profile with the information you provided: {', '.join(extracted_data.keys())}. Now let me help you with your request.", True, True
+                # Clean and validate the extracted data
+                cleaned_data = ProfileCompletionService.clean_extracted_data(extracted_data)
+                print(f"Cleaned data: {cleaned_data}")
+                
+                if cleaned_data:
+                    # Update profile with cleaned data
+                    print("Updating profile with cleaned data")
+                    success = await ProfileCompletionService.update_profile(db, user_id, cleaned_data)
+                    if success:
+                        print("Profile updated successfully")
+                        updated_fields = list(cleaned_data.keys())
+                        return f"I've updated your profile with the information you provided: {', '.join(updated_fields)}. Now let me help you with your request.", True, True
+                    else:
+                        print("Failed to update profile")
+                else:
+                    print("No valid data after cleaning")
+            else:
+                print("No data extracted from user message")
             
             # If extraction failed and profile is incomplete, generate LLM message asking for missing fields
             if not is_complete:
@@ -566,7 +628,9 @@ class ProfileCompletionService:
         
         # Profile is incomplete and user is not providing profile info, generate LLM message asking for missing fields
         print("User not providing profile info, generating profile completion message")
+        print(f"Missing fields to request: {missing_fields}")
         profile_message = await ProfileCompletionService.generate_profile_completion_message(
             user_message, missing_fields, conversation_history, user
         )
+        print(f"Generated profile completion message: {profile_message}")
         return profile_message, False, False 

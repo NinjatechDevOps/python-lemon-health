@@ -9,6 +9,7 @@ class PromptType(str, Enum):
     EXERCISE = "exercise"
     DOCUMENTS = "documents"
     PRESCRIPTIONS = "prescriptions"
+    DEFAULT = "default"  # Special prompt type for default functionality
 
 class ChatRole(str, Enum):
     USER = "user"
@@ -56,7 +57,7 @@ class ChatHistoryResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     conv_id: str  # Changed from chat_id
-    prompt_id: str
+    prompt_id: Optional[str] = None  # Made optional for default prompts
     user_query: str
     streamed: Optional[bool] = False
 
@@ -65,6 +66,14 @@ class ChatResponse(BaseModel):
     user_query: str
     response: str
     streamed: Optional[bool] = False
+
+# Default prompt response for when query is not nutrition/exercise related
+class DefaultPromptDenialResponse(BaseModel):
+    conv_id: str
+    user_query: str
+    response: str
+    denied: bool = True
+    reason: str = "Query not related to Nutrition or Exercise"
 
 # Updated schemas for chat history list API - conversation list only
 class ConversationListItem(BaseModel):

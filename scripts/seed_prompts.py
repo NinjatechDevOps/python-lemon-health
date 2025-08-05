@@ -76,6 +76,13 @@ async def seed_prompts():
                 "prompt_type": PromptType.PRESCRIPTIONS,
                 "system_prompt": "You are Lemon, a prescription management assistant. Help users understand and manage their prescriptions and medications safely.",
                 "icon_path": "/static/prompts_icon/fi_7170401.png"  # Pill bottle/briefcase icon (swapped)
+            },
+            {
+                "name": "Default",
+                "description": "Default assistant for general health queries",
+                "prompt_type": PromptType.DEFAULT,
+                "system_prompt": "You are Lemon, a health assistant. You can help with nutrition and exercise related queries. If the user asks about something not related to nutrition or exercise, politely explain that you can only help with nutrition and exercise topics. Be helpful, friendly, and professional.",
+                "icon_path": "/static/prompts_icon/fi_959412.png"  # Using nutrition icon as default
             }
         ]
         
