@@ -21,7 +21,6 @@ class AdminService:
     ) -> Tuple[bool, Optional[Dict[str, Any]]]:
         """
         Authenticate admin user
-        
         Returns:
             Tuple[bool, Optional[Dict]]: (success, result_data)
         """
@@ -79,10 +78,9 @@ class AdminService:
         user_agent: Optional[str] = None
     ) -> None:
         """
-        Log admin activity for audit purposes (MVP - just print for now)
+        Log admin activity for audit purposes (currently prints to console)
         """
         try:
-            # For MVP, just print the activity
             print(f"Admin Activity: {action} by admin {admin_user_id} on user {target_user_id}")
             if details:
                 print(f"Details: {details}")
@@ -97,10 +95,10 @@ class AdminService:
         end_date: Optional[str] = None
     ) -> Dict[str, int]:
         """
-        Get dashboard statistics
+        Get dashboard statistics with optional date filtering
         """
         try:
-            # Calculate date filters
+            # Calculate date filters based on duration or custom range
             date_filter = None
             if duration or start_date or end_date:
                 if duration == "today":
@@ -118,10 +116,9 @@ class AdminService:
                         end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
                         date_filter = (User.created_at >= start_dt) & (User.created_at < end_dt)
                     except ValueError:
-                        # Invalid date format, ignore filter
                         pass
             
-            # Build base query with date filter
+            # Build base query with date filter if present
             base_query = select(User)
             if date_filter:
                 base_query = base_query.where(date_filter)
@@ -147,11 +144,11 @@ class AdminService:
             
             # Users created in filtered period
             if date_filter:
-                users_created_today = total_users  # In filtered period
-                users_created_this_week = total_users  # In filtered period
-                users_created_this_month = total_users  # In filtered period
+                users_created_today = total_users
+                users_created_this_week = total_users
+                users_created_this_month = total_users
             else:
-                # Default calculations (all-time)
+                # Calculate users created today, this week, this month (all-time)
                 today = datetime.utcnow().date()
                 today_result = await db.execute(
                     select(func.count(User.id)).where(func.date(User.created_at) == today)
@@ -208,7 +205,7 @@ class AdminService:
             # Build base query
             base_query = select(User)
             
-            # Add date filters
+            # Add date filters if provided
             if start_date and end_date:
                 try:
                     start_dt = datetime.strptime(start_date, "%Y-%m-%d")
@@ -216,7 +213,6 @@ class AdminService:
                     date_filter = (User.created_at >= start_dt) & (User.created_at < end_dt)
                     base_query = base_query.where(date_filter)
                 except ValueError:
-                    # Invalid date format, ignore filter
                     pass
             
             # Add search filter
@@ -267,7 +263,6 @@ class AdminService:
     ) -> Tuple[bool, Optional[User], str]:
         """
         Create a new user via admin
-        
         Returns:
             Tuple[bool, Optional[User], str]: (success, user, message)
         """
@@ -286,8 +281,6 @@ class AdminService:
                 )
                 if existing_email.scalar_one_or_none():
                     return False, None, "Email already exists"
-            
-            # Tax ID validation removed - not needed for MVP
             
             # Create new user
             hashed_password = get_password_hash(user_data.password)
@@ -323,7 +316,6 @@ class AdminService:
     ) -> Tuple[bool, Optional[User], str]:
         """
         Update user via admin
-        
         Returns:
             Tuple[bool, Optional[User], str]: (success, user, message)
         """
@@ -351,9 +343,7 @@ class AdminService:
                 if existing_email.scalar_one_or_none():
                     return False, None, "Email already exists"
             
-            # Tax ID validation removed - not needed for MVP
-            
-            # Update user fields
+            # Update user fields if provided
             if user_data.first_name is not None:
                 user.first_name = user_data.first_name
             if user_data.last_name is not None:
@@ -364,7 +354,6 @@ class AdminService:
                 user.country_code = user_data.country_code
             if user_data.email is not None:
                 user.email = user_data.email
-            # Tax ID update removed - not needed for MVP
             if user_data.is_active is not None:
                 user.is_active = user_data.is_active
             if user_data.is_verified is not None:

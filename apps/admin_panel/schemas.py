@@ -29,8 +29,6 @@ class AdminUserResponse(BaseModel):
     created_at: datetime
 
 
-# AdminActivityLogResponse removed - not needed for MVP
-
 
 class AdminDashboardStats(BaseModel):
     """Schema for admin dashboard statistics"""
