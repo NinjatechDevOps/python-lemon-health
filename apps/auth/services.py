@@ -165,6 +165,10 @@ class AuthService:
         if not user.is_active:
             return False, "Your account has been deactivated. Please contact support for assistance."
         
+        # Check if user is admin - prevent admin users from logging into mobile app
+        if user.is_admin:
+            return False, "Admin users cannot access the mobile application. Please use the admin panel instead."
+        
         # Check if password is correct
         if not verify_password(password, user.hashed_password):
             return False, "Incorrect password. Please check your password and try again."
