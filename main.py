@@ -95,6 +95,10 @@ app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])
 app.include_router(document_router, prefix="/api/documents", tags=["Documents"])
 # app.include_router(role_router, prefix="/api/roles", tags=["Roles"])
 
+# Include Admin routes
+from apps.admin_panel.routes import admin_router
+app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
+
 @app.get("/", tags=["Health Check"])
 async def health_check():
     """Health check endpoint"""
