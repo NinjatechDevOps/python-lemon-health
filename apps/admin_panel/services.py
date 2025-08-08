@@ -1,13 +1,11 @@
-import json
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
-from sqlalchemy.orm import selectinload
-
 from apps.auth.models import User
 from apps.core.security import get_password_hash, verify_password, create_access_token, create_refresh_token
 from apps.admin_panel.schemas import AdminCreateUserRequest, AdminUpdateUserRequest
+from apps.chat.models import Conversation, ChatMessage, Prompt
 
 
 class AdminService:
@@ -381,4 +379,169 @@ class AdminService:
             return result.scalar_one_or_none()
         except Exception as e:
             print(f"Error getting user by ID: {e}")
+            return None
+
+    # Admin Chat History Methods
+    @staticmethod
+    async def get_admin_chat_history_list(
+        db: AsyncSession,
+        page: int = 1,
+        per_page: int = 20,
+        search: Optional[str] = None,
+        user_id: Optional[int] = None,
+        prompt_type: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None
+    ) -> Tuple[List[Dict[str, Any]], int]:
+        """
+        Get paginated list of all chat conversations for admin
+        """
+        try:
+            # Build base query with user and prompt info
+            base_query = (
+                select(Conversation, User, Prompt)
+                .join(User, Conversation.user_id == User.id)
+                .join(Prompt, Conversation.prompt_id == Prompt.id)
+            )
+            
+            # Add date filters if provided
+            if start_date and end_date:
+                try:
+                    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+                    end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+                    date_filter = (Conversation.created_at >= start_dt) & (Conversation.created_at < end_dt)
+                    base_query = base_query.where(date_filter)
+                except ValueError:
+                    pass
+            
+            # Add search filter
+            if search:
+                search_filter = (
+                    Conversation.title.ilike(f"%{search}%") |
+                    User.first_name.ilike(f"%{search}%") |
+                    User.last_name.ilike(f"%{search}%") |
+                    User.mobile_number.ilike(f"%{search}%")
+                )
+                base_query = base_query.where(search_filter)
+            
+            # Add user filter
+            if user_id:
+                base_query = base_query.where(Conversation.user_id == user_id)
+            
+            # Add prompt type filter
+            if prompt_type:
+                base_query = base_query.where(Prompt.prompt_type == prompt_type)
+            
+            # Get total count
+            count_query = select(func.count()).select_from(base_query.subquery())
+            total_result = await db.execute(count_query)
+            total = total_result.scalar()
+            
+            # Get paginated results
+            offset = (page - 1) * per_page
+            conversations_query = (
+                base_query
+                .order_by(desc(Conversation.updated_at))
+                .offset(offset)
+                .limit(per_page)
+            )
+            
+            conversations_result = await db.execute(conversations_query)
+            conversations = conversations_result.all()
+            
+            # Build response data
+            conversation_items = []
+            for conv, user, prompt in conversations:
+                # Get message count and last message preview
+                message_count_result = await db.execute(
+                    select(func.count(ChatMessage.id)).where(ChatMessage.conversation_id == conv.id)
+                )
+                message_count = message_count_result.scalar()
+                
+                # Get last message preview
+                last_message_result = await db.execute(
+                    select(ChatMessage.content)
+                    .where(ChatMessage.conversation_id == conv.id)
+                    .order_by(desc(ChatMessage.created_at))
+                    .limit(1)
+                )
+                last_message = last_message_result.scalar_one_or_none()
+                last_message_preview = last_message[:100] + "..." if last_message and len(last_message) > 100 else last_message
+                
+                conversation_items.append({
+                    "conv_id": conv.conv_id,
+                    "user_id": user.id,
+                    "user_name": f"{user.first_name} {user.last_name}".strip(),
+                    "user_mobile": user.mobile_number,
+                    "prompt_type": prompt.prompt_type.value,
+                    "title": conv.title,
+                    "message_count": message_count,
+                    "last_message_preview": last_message_preview,
+                    "created_at": conv.created_at.isoformat(),
+                    "updated_at": conv.updated_at.isoformat()
+                })
+            
+            return conversation_items, total
+            
+        except Exception as e:
+            print(f"Error getting admin chat history list: {e}")
+            return [], 0
+    
+    @staticmethod
+    async def get_admin_chat_history_detail(
+        db: AsyncSession,
+        conv_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get detailed chat history for a specific conversation
+        """
+        try:
+            # Get conversation with user and prompt info
+            result = await db.execute(
+                select(Conversation, User, Prompt)
+                .join(User, Conversation.user_id == User.id)
+                .join(Prompt, Conversation.prompt_id == Prompt.id)
+                .where(Conversation.conv_id == conv_id)
+            )
+            conversation_data = result.first()
+            
+            if not conversation_data:
+                return None
+            
+            conv, user, prompt = conversation_data
+            
+            # Get all messages for this conversation
+            messages_result = await db.execute(
+                select(ChatMessage)
+                .where(ChatMessage.conversation_id == conv.id)
+                .order_by(ChatMessage.created_at)
+            )
+            messages = messages_result.scalars().all()
+            
+            # Build messages response
+            messages_response = []
+            for msg in messages:
+                messages_response.append({
+                    "id": msg.id,
+                    "mid": msg.mid,
+                    "role": msg.role.value,
+                    "content": msg.content,
+                    "created_at": msg.created_at.isoformat(),
+                    "user_id": msg.user_id
+                })
+            
+            return {
+                "conv_id": conv.conv_id,
+                "user_id": user.id,
+                "user_name": f"{user.first_name} {user.last_name}".strip(),
+                "user_mobile": user.mobile_number,
+                "prompt_type": prompt.prompt_type.value,
+                "title": conv.title,
+                "created_at": conv.created_at.isoformat(),
+                "updated_at": conv.updated_at.isoformat(),
+                "messages": messages_response
+            }
+            
+        except Exception as e:
+            print(f"Error getting admin chat history detail: {e}")
             return None 
