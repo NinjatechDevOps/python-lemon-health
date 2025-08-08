@@ -45,8 +45,14 @@ class AdminService:
                 return False, {"message": "Invalid mobile number or password"}
             
             # Generate tokens
-            access_token = create_access_token(subject=str(user.id))
-            refresh_token = create_refresh_token(subject=str(user.id))
+            access_token = create_access_token(
+                subject=str(user.id),
+                extra_data={"is_admin": user.is_admin}
+            )
+            refresh_token = create_refresh_token(
+                subject=str(user.id),
+                extra_data={"is_admin": user.is_admin}
+            )
             
             return True, {
                 "access_token": access_token,

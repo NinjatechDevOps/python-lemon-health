@@ -1,17 +1,11 @@
 from typing import Any, Optional
-import os
-from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import ValidationError
-
-from apps.auth.deps import get_current_user
+from apps.auth.deps import get_current_mobile_user
 from apps.auth.models import User
-from apps.core.config import settings
 from apps.core.db import get_db
-from apps.profile.models import Profile
-from apps.profile.schemas import ProfileCreate, ProfileResponse, ProfileUpdate, ProfilePictureResponse, BaseResponse
+from apps.profile.schemas import ProfileResponse, BaseResponse
 from apps.profile.services import ProfileService
 from apps.profile.utils import api_response, api_error_response, convert_form_data_to_profile_update, convert_relative_to_complete_url
 
@@ -20,7 +14,7 @@ router = APIRouter()
 
 @router.get("/me", response_model=BaseResponse[ProfileResponse])
 async def get_my_profile(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_mobile_user),
     db: AsyncSession = Depends(get_db)
 ) -> Any:
     """
@@ -75,7 +69,7 @@ async def update_profile(
     weight: Optional[str] = Form(None),
     gender: Optional[str] = Form(None),
     profile_picture: Optional[UploadFile] = File(None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_mobile_user),
     db: AsyncSession = Depends(get_db)
 ) -> Any:
     """
@@ -155,7 +149,7 @@ async def update_profile(
 
 @router.delete("/", response_model=dict)
 async def delete_profile(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_mobile_user),
     db: AsyncSession = Depends(get_db)
 ) -> dict:
     """
