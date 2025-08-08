@@ -4,7 +4,7 @@ from fastapi.responses import  JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from apps.core.db import get_db
-from apps.auth.deps import get_current_verified_user
+from apps.auth.deps import get_current_mobile_verified_user
 from apps.auth.models import User
 from apps.chat.models import Document
 from apps.chat.models import PromptType
@@ -51,7 +51,7 @@ async def get_prompts(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
 @chat_router.post("/", response_model=BaseResponse[ChatResponse])
 async def chat(
     chat_request: ChatRequest,
-    current_user: User = Depends(get_current_verified_user),
+    current_user: User = Depends(get_current_mobile_verified_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -145,7 +145,7 @@ async def chat(
 async def get_chat_history(
     conv_id: str, 
     db: AsyncSession = Depends(get_db), 
-    current_user: User = Depends(get_current_verified_user)
+    current_user: User = Depends(get_current_mobile_verified_user)
 ):
     """
     Get chat history for a specific conv_id.
@@ -177,7 +177,7 @@ async def get_user_chat_history(
     search: Optional[str] = Query(None, description="Search conversations by title or content"),
     prompt_type: Optional[PromptType] = Query(None, description="Filter by prompt type"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_verified_user)
+    current_user: User = Depends(get_current_mobile_verified_user)
 ):
     """
     Get all chat history for the current user with pagination.
@@ -214,7 +214,7 @@ async def get_user_chat_history(
 @document_router.post("/upload", response_model=BaseResponse[DocumentUploadResponse])
 async def upload_document(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_verified_user),
+    current_user: User = Depends(get_current_mobile_verified_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -269,7 +269,7 @@ async def get_user_documents(
     per_page: int = Query(20, ge=1, le=100, description="Number of documents per page (max 100)"),
     search: Optional[str] = Query(None, description="Search documents by original filename or LLM-generated filename"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_verified_user)
+    current_user: User = Depends(get_current_mobile_verified_user)
 ):
     """
     Get all documents uploaded by the current user with pagination.
@@ -342,7 +342,7 @@ async def get_user_documents(
 @document_router.post("/analyze", response_model=BaseResponse[Dict[str, Any]])
 async def analyze_document(
     request: DocumentAnalysisRequest,
-    current_user: User = Depends(get_current_verified_user),
+    current_user: User = Depends(get_current_mobile_verified_user),
     db: AsyncSession = Depends(get_db)
 ):
     """

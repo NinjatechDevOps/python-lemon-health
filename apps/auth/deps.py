@@ -62,4 +62,38 @@ async def get_current_verified_user(
             detail={"success": False, "message": "User not verified", "data": {}}
         )
     
+    return current_user
+
+
+async def get_current_mobile_user(
+    current_user: Annotated[User, Depends(get_current_user)]
+) -> User:
+    """
+    Get the current user and ensure they are NOT an admin (for mobile app APIs)
+    """
+    if current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "success": False, 
+                "message": "Admin users cannot access mobile application APIs. Please use the admin panel instead.", 
+                "data": {}
+            }
+        )
+    
+    return current_user
+
+
+async def get_current_mobile_verified_user(
+    current_user: Annotated[User, Depends(get_current_mobile_user)]
+) -> User:
+    """
+    Get the current mobile user and verify that they have verified their mobile number
+    """
+    if not current_user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"success": False, "message": "User not verified", "data": {}}
+        )
+    
     return current_user 

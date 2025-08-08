@@ -17,7 +17,7 @@ from apps.auth.schemas import (
 )
 from apps.auth.services import AuthService
 from apps.auth.twilio_service import twilio_service
-from apps.auth.deps import get_current_verified_user, get_current_user
+from apps.auth.deps import get_current_mobile_verified_user, get_current_user
 from apps.auth.utils import api_response, api_error_response
 
 router = APIRouter()
@@ -412,7 +412,7 @@ async def refresh_token(token_data: RefreshToken, db: AsyncSession = Depends(get
 @router.post("/change-password", response_model=BaseResponse)
 async def change_password(
     password_data: ChangePasswordRequest,
-    current_user: Annotated[User, Depends(get_current_verified_user)],
+    current_user: Annotated[User, Depends(get_current_mobile_verified_user)],
     db: AsyncSession = Depends(get_db)
 ) -> Any:
     """

@@ -71,4 +71,49 @@ class AdminUserListResponse(BaseModel):
     per_page: int
     total_pages: int
     has_next: bool
+    has_prev: bool
+
+# Admin Chat History Schemas
+class AdminChatMessageResponse(BaseModel):
+    """Schema for admin chat message response"""
+    id: int
+    mid: str
+    role: str
+    content: str
+    created_at: str
+    user_id: Optional[int] = None
+
+class AdminChatHistoryResponse(BaseModel):
+    """Schema for admin chat history detail response"""
+    conv_id: str
+    user_id: int
+    user_name: str
+    user_mobile: str
+    prompt_type: str
+    title: Optional[str] = None
+    created_at: str
+    updated_at: str
+    messages: List[AdminChatMessageResponse]
+
+class AdminChatHistoryListItem(BaseModel):
+    """Schema for admin chat history list item"""
+    conv_id: str
+    user_id: int
+    user_name: str
+    user_mobile: str
+    prompt_type: str
+    title: Optional[str] = None
+    message_count: int
+    last_message_preview: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+class AdminChatHistoryListResponse(BaseModel):
+    """Schema for admin chat history list response"""
+    conversations: List[AdminChatHistoryListItem]
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+    has_next: bool
     has_prev: bool 

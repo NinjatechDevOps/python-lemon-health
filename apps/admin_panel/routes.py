@@ -6,7 +6,8 @@ from apps.auth.models import User
 from apps.admin_panel.deps import get_current_admin_user, get_admin_request_info
 from apps.admin_panel.schemas import (
     AdminLoginRequest, AdminLoginResponse, AdminUserResponse, 
-    AdminCreateUserRequest, AdminUpdateUserRequest
+    AdminCreateUserRequest, AdminUpdateUserRequest,
+    AdminChatHistoryListResponse
 )
 from apps.admin_panel.services import AdminService
 
@@ -358,5 +359,143 @@ async def update_user(
         return {
             "success": False,
             "message": f"Error updating user: {str(e)}",
+            "data": None
+        }
+
+# Admin Chat History Routes
+@admin_router.get("/chat/history")
+async def get_admin_chat_history_list(
+    page: int = Query(1, ge=1, description="Page number (starts from 1)"),
+    per_page: int = Query(20, ge=1, le=100, description="Number of conversations per page (max 100)"),
+    search: Optional[str] = Query(None, description="Search conversations by title, user name, or mobile"),
+    user_id: Optional[int] = Query(None, description="Filter by specific user ID"),
+    prompt_type: Optional[str] = Query(None, description="Filter by prompt type (nutrition, exercise, etc.)"),
+    start_date: Optional[str] = Query(None, description="Start date filter (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date filter (YYYY-MM-DD)"),
+    current_admin: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Get paginated list of all chat conversations for admin
+    
+    Admin can view all chat conversations with search and filter capabilities.
+    """
+    try:
+        conversations, total = await AdminService.get_admin_chat_history_list(
+            db=db,
+            page=page,
+            per_page=per_page,
+            search=search,
+            user_id=user_id,
+            prompt_type=prompt_type,
+            start_date=start_date,
+            end_date=end_date
+        )
+        
+        # Calculate pagination info
+        total_pages = (total + per_page - 1) // per_page if total > 0 else 0
+        
+        # Convert to proper schema format
+        from apps.admin_panel.schemas import AdminChatHistoryListItem
+        
+        conversation_items = []
+        for conv in conversations:
+            conversation_items.append(AdminChatHistoryListItem(
+                conv_id=conv["conv_id"],
+                user_id=conv["user_id"],
+                user_name=conv["user_name"],
+                user_mobile=conv["user_mobile"],
+                prompt_type=conv["prompt_type"],
+                title=conv["title"],
+                message_count=conv["message_count"],
+                last_message_preview=conv["last_message_preview"],
+                created_at=conv["created_at"],
+                updated_at=conv["updated_at"]
+            ))
+        
+        response_data = AdminChatHistoryListResponse(
+            conversations=conversation_items,
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages,
+            has_next=page < total_pages,
+            has_prev=page > 1
+        )
+        
+        return {
+            "success": True,
+            "message": "Chat history list retrieved successfully",
+            "data": response_data
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error retrieving chat history list: {str(e)}",
+            "data": None
+        }
+
+
+@admin_router.get("/chat/history/{conv_id}")
+async def get_admin_chat_history_detail(
+    conv_id: str,
+    current_admin: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Get detailed chat history for a specific conversation
+    
+    Admin can view complete conversation details including all messages.
+    """
+    try:
+        conversation_detail = await AdminService.get_admin_chat_history_detail(
+            db=db,
+            conv_id=conv_id
+        )
+        
+        if not conversation_detail:
+            return {
+                "success": False,
+                "message": f"Conversation with ID {conv_id} not found",
+                "data": None
+            }
+        
+        # Convert to proper schema format
+        from apps.admin_panel.schemas import AdminChatMessageResponse, AdminChatHistoryResponse
+        
+        messages_response = []
+        for msg in conversation_detail["messages"]:
+            messages_response.append(AdminChatMessageResponse(
+                id=msg["id"],
+                mid=msg["mid"],
+                role=msg["role"],
+                content=msg["content"],
+                created_at=msg["created_at"],
+                user_id=msg["user_id"]
+            ))
+        
+        response_data = AdminChatHistoryResponse(
+            conv_id=conversation_detail["conv_id"],
+            user_id=conversation_detail["user_id"],
+            user_name=conversation_detail["user_name"],
+            user_mobile=conversation_detail["user_mobile"],
+            prompt_type=conversation_detail["prompt_type"],
+            title=conversation_detail["title"],
+            created_at=conversation_detail["created_at"],
+            updated_at=conversation_detail["updated_at"],
+            messages=messages_response
+        )
+        
+        return {
+            "success": True,
+            "message": "Chat history detail retrieved successfully",
+            "data": response_data
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error retrieving chat history detail: {str(e)}",
             "data": None
         } 

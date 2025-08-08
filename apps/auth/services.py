@@ -196,12 +196,13 @@ class AuthService:
         # Generate access token
         access_token = create_access_token(
             subject=str(user.id),
-            extra_data={"is_verified": user.is_verified}
+            extra_data={"is_verified": user.is_verified, "is_admin": user.is_admin}
         )
         
         # Generate refresh token
         refresh_token = create_refresh_token(
-            subject=str(user.id)
+            subject=str(user.id),
+            extra_data={"is_admin": user.is_admin}
         )
         
         return True, {
@@ -352,12 +353,13 @@ class AuthService:
             # Generate new access token
             new_access_token = create_access_token(
                 subject=str(user.id),
-                extra_data={"is_verified": user.is_verified}
+                extra_data={"is_verified": user.is_verified, "is_admin": user.is_admin}
             )
 
             # Generate new refresh token
             new_refresh_token = create_refresh_token(
-                subject=str(user.id)
+                subject=str(user.id),
+                extra_data={"is_admin": user.is_admin}
             )
 
             print("DEBUG: New tokens generated for user_id:", user_id)

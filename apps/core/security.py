@@ -24,11 +24,13 @@ def create_access_token(subject: str, extra_data: Optional[Dict[str, Any]] = Non
     return encoded_jwt
 
 
-def create_refresh_token(subject: str) -> str:
+def create_refresh_token(subject: str, extra_data: Optional[Dict[str, Any]] = None) -> str:
     """
     Create JWT refresh token with longer expiration
     """
     to_encode = {"sub": subject, "token_type": "refresh"}
+    if extra_data:
+        to_encode.update(extra_data)
     
     expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire})
