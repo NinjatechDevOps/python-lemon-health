@@ -1,4 +1,5 @@
 import re
+import logging
 from datetime import datetime, date
 from typing import Dict, Any, List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,9 @@ from apps.chat.prompts import (
     PROFILE_FIELD_MAPPING,
     PROFILE_INFO_DETECTION_PROMPT
 )
+
+# Set up logger for ProfileCompletionService
+logger = logging.getLogger(__name__)
 
 
 class ProfileCompletionService:
@@ -75,7 +79,7 @@ class ProfileCompletionService:
         import re
         for pattern in profile_dependent_patterns:
             if re.search(pattern, query_lower):
-                print(f"DEBUG: Found profile-dependent pattern: {pattern}")
+                logger.debug(f"Found profile-dependent pattern: {pattern}")
                 return True
         
         # Check for profile-independent patterns (general information requests)
@@ -106,7 +110,7 @@ class ProfileCompletionService:
         
         for pattern in profile_independent_patterns:
             if re.search(pattern, query_lower):
-                print(f"DEBUG: Found profile-independent pattern: {pattern}")
+                logger.debug(f"Found profile-independent pattern: {pattern}")
                 return False
         
         # Default behavior based on prompt type
@@ -240,7 +244,7 @@ class ProfileCompletionService:
                         # Already a date object, use as is
                         cleaned_data[field] = value
                     else:
-                        print(f"DEBUG: Invalid date_of_birth value type: {type(value)}, value: {value}")
+                        logger.debug(f"Invalid date_of_birth value type: {type(value)}, value: {value}")
                 elif field == 'height':
                     # Convert to float and validate range
                     try:
@@ -249,15 +253,15 @@ class ProfileCompletionService:
                         elif isinstance(value, (int, float)):
                             height_val = float(value)
                         else:
-                            print(f"DEBUG: Invalid height value type: {type(value)}, value: {value}")
+                            logger.debug(f"Invalid height value type: {type(value)}, value: {value}")
                             continue
                             
                         if 100 <= height_val <= 250:  # Reasonable height range
                             cleaned_data[field] = height_val
                         else:
-                            print(f"DEBUG: Invalid height value: {height_val}, skipping")
+                            logger.debug(f"Invalid height value: {height_val}, skipping")
                     except (ValueError, TypeError):
-                        print(f"DEBUG: Could not convert height value: {value}")
+                        logger.debug(f"Could not convert height value: {value}")
                 elif field == 'weight':
                     # Convert to float and validate range
                     try:
@@ -266,15 +270,15 @@ class ProfileCompletionService:
                         elif isinstance(value, (int, float)):
                             weight_val = float(value)
                         else:
-                            print(f"DEBUG: Invalid weight value type: {type(value)}, value: {value}")
+                            logger.debug(f"Invalid weight value type: {type(value)}, value: {value}")
                             continue
                             
                         if 20 <= weight_val <= 300:  # Reasonable weight range
                             cleaned_data[field] = weight_val
                         else:
-                            print(f"DEBUG: Invalid weight value: {weight_val}, skipping")
+                            logger.debug(f"Invalid weight value: {weight_val}, skipping")
                     except (ValueError, TypeError):
-                        print(f"DEBUG: Could not convert weight value: {value}")
+                        logger.debug(f"Could not convert weight value: {value}")
                 elif field == 'gender':
                     # Ensure gender is properly capitalized for schema validation
                     if isinstance(value, str):
@@ -351,22 +355,22 @@ class ProfileCompletionService:
             
             if json_match:
                 json_str = json_match.group()
-                print(f"Extracted JSON string: {json_str}")
+                logger.debug(f"Extracted JSON string: {json_str}")
                 extracted_data = json.loads(json_str)
             else:
                 # If no JSON found, try to parse the entire response
-                print(f"No JSON pattern found, trying to parse entire response: {response_clean}")
+                logger.debug(f"No JSON pattern found, trying to parse entire response: {response_clean}")
                 extracted_data = json.loads(response_clean)
             
             # Clean and convert extracted data
             cleaned_data = ProfileCompletionService.clean_extracted_data(extracted_data)
-            print(f"Cleaned extracted data: {cleaned_data}")
+            logger.debug(f"Cleaned extracted data: {cleaned_data}")
             
             return cleaned_data
             
         except (json.JSONDecodeError, KeyError) as e:
-            print(f"Error parsing LLM response: {e}")
-            print(f"Raw LLM response: {response}")
+            logger.error(f"Error parsing LLM response: {e}")
+            logger.debug(f"Raw LLM response: {response}")
             
             # Try to extract data manually if JSON parsing fails
             return ProfileCompletionService.extract_data_manually(response, missing_fields)
@@ -453,11 +457,11 @@ class ProfileCompletionService:
                     elif 'other' in response_lower and 'male' not in response_lower and 'female' not in response_lower:
                         extracted_data['gender'] = 'Other'
             
-            print(f"Manually extracted data: {extracted_data}")
+            logger.debug(f"Manually extracted data: {extracted_data}")
             return extracted_data
             
         except Exception as e:
-            print(f"Error in manual extraction: {e}")
+            logger.error(f"Error in manual extraction: {e}")
             return {}
     
     @staticmethod
@@ -492,7 +496,7 @@ class ProfileCompletionService:
             return True
             
         except Exception as e:
-            print(f"Error updating profile: {e}")
+            logger.error(f"Error updating profile: {e}")
             await db.rollback()
             return False
     
@@ -592,19 +596,19 @@ class ProfileCompletionService:
         Returns:
             Tuple[str, bool, bool]: (response_message, should_continue_with_llm, profile_was_updated)
         """
-        print(f"Processing profile completion for user {user_id}")
-        print(f"User message: {user_message}")
-        print(f"Prompt type: {prompt_type}")
+        logger.info(f"Processing profile completion for user {user_id}")
+        logger.info(f"User message: {user_message}")
+        logger.info(f"Prompt type: {prompt_type}")
         
         # Check profile completeness for this specific query
         is_complete, missing_fields = await ProfileCompletionService.check_profile_completeness_for_query(
             db, user_id, user_message, prompt_type
         )
         
-        print(f"Profile complete: {is_complete}")
-        print(f"Missing fields: {missing_fields}")
-        print(f"Profile required for query: {ProfileCompletionService.is_profile_required(user_message, prompt_type)}")
-        print(f"Query contains 'weight loss': {'weight loss' in user_message.lower()}")
+        logger.info(f"Profile complete: {is_complete}")
+        logger.info(f"Missing fields: {missing_fields}")
+        logger.info(f"Profile required for query: {ProfileCompletionService.is_profile_required(user_message, prompt_type)}")
+        logger.info(f"Query contains 'weight loss': {'weight loss' in user_message.lower()}")
         
         # CRITICAL FIX: Use dynamic LLM-based detection instead of static patterns
         # This provides better accuracy and handles edge cases
@@ -612,12 +616,12 @@ class ProfileCompletionService:
             user_message, conversation_history, user
         )
         
-        print(f"User message contains profile info (dynamic detection): {has_profile_info}")
-        print(f"Message: {user_message}")
+        logger.info(f"User message contains profile info (dynamic detection): {has_profile_info}")
+        logger.info(f"Message: {user_message}")
         
         if has_profile_info:
             # User is providing profile info, try to extract and update
-            print("Attempting to extract profile information")
+            logger.info("Attempting to extract profile information")
             
             # If profile is complete, extract all fields that might be updated
             if is_complete:
@@ -632,27 +636,27 @@ class ProfileCompletionService:
                     user_message, conversation_history, missing_fields, user
                 )
             
-            print(f"Extracted data: {extracted_data}")
+            logger.debug(f"Extracted data: {extracted_data}")
             
             if extracted_data:
                 # Data is already cleaned in extract_profile_info, use directly
-                print(f"Using extracted data directly: {extracted_data}")
+                logger.debug(f"Using extracted data directly: {extracted_data}")
                 
                 # Update profile with extracted data
-                print("Updating profile with extracted data")
+                logger.info("Updating profile with extracted data")
                 success = await ProfileCompletionService.update_profile(db, user_id, extracted_data)
                 if success:
-                    print("Profile updated successfully")
+                    logger.info("Profile updated successfully")
                     updated_fields = list(extracted_data.keys())
                     return f"I've updated your profile with the information you provided: {', '.join(updated_fields)}. Now let me help you with your request.", True, True
                 else:
-                    print("Failed to update profile")
+                    logger.error("Failed to update profile")
             else:
-                print("No data extracted from user message")
+                logger.info("No data extracted from user message")
             
             # If extraction failed and profile is incomplete, generate LLM message asking for missing fields
             if not is_complete:
-                print("Extraction failed, generating profile completion message")
+                logger.info("Extraction failed, generating profile completion message")
                 profile_message = await ProfileCompletionService.generate_profile_completion_message(
                     user_message, missing_fields, conversation_history, user
                 )
@@ -660,16 +664,16 @@ class ProfileCompletionService:
         
         # If profile is complete and no profile info provided, proceed with normal chat
         if is_complete:
-            print("Profile is complete, proceeding with normal chat")
+            logger.info("Profile is complete, proceeding with normal chat")
             return None, True, False
         
         # Profile is incomplete and user is not providing profile info, generate LLM message asking for missing fields
-        print("User not providing profile info, generating profile completion message")
-        print(f"Missing fields to request: {missing_fields}")
+        logger.info("User not providing profile info, generating profile completion message")
+        logger.info(f"Missing fields to request: {missing_fields}")
         profile_message = await ProfileCompletionService.generate_profile_completion_message(
             user_message, missing_fields, conversation_history, user
         )
-        print(f"Generated profile completion message: {profile_message}")
+        logger.debug(f"Generated profile completion message: {profile_message}")
         return profile_message, False, False 
 
     @staticmethod
@@ -691,10 +695,10 @@ class ProfileCompletionService:
                 max_tokens=5      # Only need YES or NO
             )
             response_clean = response.strip().upper()
-            print(f"DEBUG: Profile info detection response: '{response_clean}' for message: '{user_message}'")
+            logger.debug(f"DEBUG: Profile info detection response: '{response_clean}' for message: '{user_message}'")
             return response_clean == "YES"
         except Exception as e:
-            print(f"DEBUG: Error in dynamic profile info detection: {e}")
+            logger.debug(f"DEBUG: Error in dynamic profile info detection: {e}")
             # Fallback to static pattern matching if LLM fails
             return ProfileCompletionService.detect_profile_info_statically(user_message)
     
@@ -724,7 +728,7 @@ class ProfileCompletionService:
         import re
         for pattern in profile_patterns:
             if re.search(pattern, message_lower):
-                print(f"DEBUG: Found static profile pattern: {pattern}")
+                logger.debug(f"DEBUG: Found static profile pattern: {pattern}")
                 return True
         
         return False 

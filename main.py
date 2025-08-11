@@ -10,12 +10,14 @@ from apps.auth.routes import router as auth_router
 from apps.profile.routes import router as profile_router
 from apps.chat.routes import chat_router, document_router
 from apps.core.config import settings
+from apps.core.logging_config import setup_logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+# Setup logging based on environment
+environment = settings.ENVIRONMENT
+setup_logging(environment)
+
+# Get logger for main application
+logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -24,6 +26,8 @@ app = FastAPI(
     version="0.1.0",
     redirect_slashes=True,  # Automatically redirect /api/profile to /api/profile/
 )
+
+logger.info(f"Starting Lemon Health API in {environment} environment")
 
 # Add CORS middleware
 app.add_middleware(

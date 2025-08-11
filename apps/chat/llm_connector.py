@@ -1,9 +1,12 @@
 import os
+import asyncio
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from apps.llm.factory import get_llm_provider
+from apps.auth.models import User
 
+# Set up logger for LLM connector
 logger = logging.getLogger(__name__)
 
 # Get the LLM provider from environment variable or default to OpenAI
@@ -31,7 +34,7 @@ async def process_query_with_prompt(
     user_message: str, 
     system_prompt: str, 
     conversation_history: List[Dict[str, str]],
-    user,
+    user: User,
     **kwargs
 ) -> str:
     """
@@ -62,43 +65,68 @@ async def process_query_with_prompt(
     # Process the query through the LLM provider with additional parameters
     try:
         # Run the synchronous LLM call in a thread pool to avoid blocking
-        import asyncio
         import concurrent.futures
         import functools
         
-        # Create a thread-safe wrapper for the LLM call
-        def safe_llm_call(messages, **kwargs):
-            try:
-                provider = get_llm_provider_instance()
-                return provider.chat(messages, **kwargs)
-            except Exception as e:
-                logger.error(f"Error in LLM call: {str(e)}")
-                return "I'm sorry, I encountered an error processing your request. Please try again later."
+        # Get LLM provider instance
+        llm_provider = get_llm_provider_instance()
         
-        # Use ThreadPoolExecutor with proper error handling and retry
-        max_retries = 2
+        # Prepare messages for LLM
+        messages = []
+        
+        # Add system prompt
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        
+        # Add conversation history
+        for msg in conversation_history:
+            messages.append({"role": msg["role"], "content": msg["content"]})
+        
+        # Add user message
+        messages.append({"role": "user", "content": user_message})
+        
+        logger.debug(f"Processing query with {len(messages)} messages")
+        
+        # Call LLM with timeout and retry logic
+        max_retries = 3
+        retry_delay = 1
+        
         for attempt in range(max_retries):
             try:
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                    loop = asyncio.get_event_loop()
-                    # Use functools.partial to properly pass arguments
+                # Use thread pool executor to run synchronous LLM call
+                loop = asyncio.get_event_loop()
+                with concurrent.futures.ThreadPoolExecutor() as executor:
                     future = loop.run_in_executor(
-                        executor, 
-                        functools.partial(safe_llm_call, messages, **kwargs)
+                        executor,
+                        functools.partial(
+                            llm_provider.chat,
+                            messages=messages,
+                            **kwargs
+                        )
                     )
-                    response = await asyncio.wait_for(future, timeout=30.0)  # 30 second timeout
-                return response
-            except (asyncio.TimeoutError, asyncio.CancelledError) as e:
-                if attempt == max_retries - 1:  # Last attempt
-                    raise
-                logger.warning(f"LLM call attempt {attempt + 1} failed, retrying...")
-                await asyncio.sleep(0.5)  # Brief delay before retry
-    except asyncio.CancelledError:
-        logger.error("LLM request was cancelled")
-        return "I'm sorry, the request was cancelled. Please try again."
-    except asyncio.TimeoutError:
-        logger.error("LLM request timed out")
-        return "I'm sorry, the request timed out. Please try again."
+                    
+                    # Wait for response with timeout
+                    response = await asyncio.wait_for(future, timeout=30.0)
+                    return response
+                    
+            except asyncio.TimeoutError:
+                logger.warning(f"LLM request timed out on attempt {attempt + 1}/{max_retries}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    logger.error("LLM request failed after all retries")
+                    raise Exception("LLM request timed out after multiple attempts")
+                    
+            except Exception as e:
+                logger.error(f"LLM request failed on attempt {attempt + 1}/{max_retries}: {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    logger.error("LLM request failed after all retries")
+                    raise e
+                    
     except Exception as e:
-        logger.error(f"Error processing query with LLM: {str(e)}")
-        return "I'm sorry, I encountered an error processing your request. Please try again later." 
+        logger.error(f"Error in process_query_with_prompt: {e}")
+        raise e 

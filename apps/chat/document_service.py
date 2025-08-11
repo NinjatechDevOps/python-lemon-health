@@ -1,6 +1,8 @@
 import json
 import uuid
 import mimetypes
+import os
+import logging
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 from datetime import datetime, timezone
@@ -17,6 +19,9 @@ from apps.chat.models import Document, DocumentAnalysis, DocumentType
 from apps.chat.llm_connector import process_query_with_prompt
 from apps.chat.prompts import DOCUMENT_ANALYSIS_PROMPT
 from apps.core.config import settings
+
+# Set up logger for DocumentService
+logger = logging.getLogger(__name__)
 
 
 class DocumentService:
@@ -133,7 +138,7 @@ class DocumentService:
                 max_tokens=1500   # More tokens for detailed analysis
             )
             
-            print(f"DEBUG: LLM Response: {response}")
+            logger.debug(f"DEBUG: LLM Response: {response}")
             
             # Parse JSON response
             try:
@@ -144,18 +149,18 @@ class DocumentService:
                 else:
                     analysis_data = json.loads(response)
                 
-                print(f"DEBUG: Parsed analysis data: {analysis_data}")
+                logger.debug(f"DEBUG: Parsed analysis data: {analysis_data}")
                 
                 result = {
                     "filename": analysis_data.get("filename", "document.pdf"),
                     "tags": analysis_data.get("tags", [])
                 }
                 
-                print(f"DEBUG: Returning result: {result}")
+                logger.debug(f"DEBUG: Returning result: {result}")
                 return result
                 
             except (json.JSONDecodeError, KeyError) as e:
-                print(f"DEBUG: JSON parsing error: {e}")
+                logger.debug(f"DEBUG: JSON parsing error: {e}")
                 # Fallback: create basic filename and tags
                 return {
                     "filename": "document.pdf",
@@ -179,7 +184,7 @@ class DocumentService:
             
             # Analyze content
             analysis_result = await DocumentService.analyze_document_content(extracted_content, user)
-            print(f"DEBUG: Analysis result: {analysis_result}")
+            logger.debug(f"DEBUG: Analysis result: {analysis_result}")
             
             # Update analysis record
             analysis.extracted_content = extracted_content
@@ -189,7 +194,7 @@ class DocumentService:
             
             # Update document with LLM-generated filename
             document.llm_generated_filename = analysis_result["filename"]
-            print(f"DEBUG: Updated document.llm_generated_filename to: {analysis_result['filename']}")
+            logger.debug(f"DEBUG: Updated document.llm_generated_filename to: {analysis_result['filename']}")
             
             await db.commit()
             await db.refresh(analysis)
@@ -219,7 +224,7 @@ class DocumentService:
                     select(Document).where(Document.id == document.id)
                 )
                 document_in_session = result.scalar_one()
-                print(f"DEBUG: Re-queried document in new session, id: {document_in_session.id}")
+                logger.debug(f"DEBUG: Re-queried document in new session, id: {document_in_session.id}")
                 
                 # Update status to processing
                 analysis = await DocumentService.get_or_create_analysis(document_in_session.id, db)
@@ -231,7 +236,7 @@ class DocumentService:
                 
                 # Analyze content
                 analysis_result = await DocumentService.analyze_document_content(extracted_content, user)
-                print(f"DEBUG: Async analysis result: {analysis_result}")
+                logger.debug(f"DEBUG: Async analysis result: {analysis_result}")
                 
                 # Update analysis record
                 analysis.extracted_content = extracted_content
@@ -241,7 +246,7 @@ class DocumentService:
                 
                 # Update document with LLM-generated filename
                 document_in_session.llm_generated_filename = analysis_result["filename"]
-                print(f"DEBUG: Async updated document.llm_generated_filename to: {analysis_result['filename']}")
+                logger.debug(f"DEBUG: Async updated document.llm_generated_filename to: {analysis_result['filename']}")
                 
                 await db.commit()
                 await db.refresh(analysis)

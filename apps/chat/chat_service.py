@@ -1,6 +1,7 @@
 import uuid
 import math
 import asyncio
+import logging
 from typing import Dict, Any, List, Optional, Tuple
 
 from fastapi import HTTPException
@@ -22,6 +23,9 @@ from apps.chat.prompts import (
     DEFAULT_PROMPT_GUARDRAILS, DEFAULT_PROMPT_SYSTEM, QUERY_CLASSIFICATION_PROMPT, 
     DEFAULT_ALLOWED_PROMPT_TYPES, DEFAULT_PROMPT_TYPE, ENHANCED_QUERY_CLASSIFICATION_PROMPT
 )
+
+# Set up logger for ChatService
+logger = logging.getLogger(__name__)
 
 
 class ChatService:
@@ -61,12 +65,12 @@ class ChatService:
             )
             # Clean and check response
             response_clean = response.strip().upper()
-            print(f"DEBUG: LLM Classification Response: '{response_clean}' for query: '{user_query}'")
+            logger.debug(f"LLM Classification Response: '{response_clean}' for query: '{user_query}'")
             return response_clean == "ALLOWED"
         except Exception as e:
-            print(f"DEBUG: Error in LLM classification: {e}")
+            logger.error(f"Error in LLM classification: {e}")
             # If LLM classification fails, default to allowing the query to be safe
-            print(f"DEBUG: LLM classification failed, defaulting to ALLOWED for safety")
+            logger.warning("LLM classification failed, defaulting to ALLOWED for safety")
             return True
 
     @staticmethod
@@ -82,7 +86,7 @@ class ChatService:
         Returns:
             bool: Always returns True to prevent blocking legitimate queries
         """
-        print(f"DEBUG: Using deprecated fallback classification - defaulting to ALLOWED for safety")
+        logger.debug("Using deprecated fallback classification - defaulting to ALLOWED for safety")
         return True
     
     @staticmethod
@@ -149,7 +153,7 @@ class ChatService:
         
         if default_prompt:
             # Use database-stored default prompt
-            print(f"DEBUG: Using database-stored default prompt: {default_prompt.name}")
+            logger.debug(f"Using database-stored default prompt: {default_prompt.name}")
             
             # Create conversation with database default prompt
             title = user_query[:60] if user_query else "Default Chat"
@@ -170,7 +174,7 @@ class ChatService:
             
         else:
             # Fallback to hardcoded approach using nutrition prompt
-            print(f"DEBUG: Using hardcoded default prompt approach")
+            logger.debug(f"Using hardcoded default prompt approach")
             
             # Get nutrition and exercise prompts for fallback
             nutrition_prompt, exercise_prompt = await ChatService.get_default_prompts(db)
@@ -448,7 +452,7 @@ class ChatService:
         category = chat_request.prompt_id or "health and wellness"
         
         # Apply guardrails for all prompt types using dynamic LLM classification with conversation context
-        print(f"DEBUG: Applying dynamic guardrails for category: {category}")
+        logger.debug(f"Applying dynamic guardrails for category: {category}")
         is_allowed = await ChatService.classify_query_with_llm(
             chat_request.user_query, 
             current_user, 
@@ -456,7 +460,7 @@ class ChatService:
             conversation_history=history_msgs  # Pass conversation history for context
         )
         if not is_allowed:
-            print(f"DEBUG: Query rejected by dynamic guardrails for category: {category}")
+            logger.debug(f"Query rejected by dynamic guardrails for category: {category}")
             from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
             guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=chat_request.user_query)
             denial_response = await process_query_with_prompt(
@@ -601,7 +605,7 @@ class ChatService:
         category = chat_request.prompt_id or "health and wellness"
         
         # Apply guardrails for all prompt types using dynamic LLM classification with conversation context
-        print(f"DEBUG: Applying dynamic guardrails for category: {category}")
+        logger.debug(f"Applying dynamic guardrails for category: {category}")
         is_allowed = await ChatService.classify_query_with_llm(
             chat_request.user_query, 
             current_user, 
@@ -609,7 +613,7 @@ class ChatService:
             conversation_history=history_msgs  # Pass conversation history for context
         )
         if not is_allowed:
-            print(f"DEBUG: Query rejected by dynamic guardrails for category: {category}")
+            logger.debug(f"Query rejected by dynamic guardrails for category: {category}")
             from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
             guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=chat_request.user_query)
             denial_response = await process_query_with_prompt(
@@ -702,7 +706,7 @@ class ChatService:
             default_prompt = result.scalar_one_or_none()
             return default_prompt
         except Exception as e:
-            print(f"DEBUG: Error getting default prompt from DB: {e}")
+            logger.error(f"Error getting default prompt from DB: {e}")
             return None
     
     @staticmethod
@@ -721,11 +725,11 @@ class ChatService:
         
         if default_prompt and default_prompt.system_prompt:
             # Use database-stored default prompt
-            print(f"DEBUG: Using database-stored default prompt: {default_prompt.name}")
+            logger.debug(f"Using database-stored default prompt: {default_prompt.name}")
             return default_prompt.system_prompt
         else:
             # Fallback to hardcoded default prompt
-            print(f"DEBUG: Using hardcoded default prompt")
+            logger.debug(f"Using hardcoded default prompt")
             return DEFAULT_PROMPT_SYSTEM
     
     @staticmethod
