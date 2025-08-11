@@ -20,7 +20,7 @@ from apps.chat.profile_completion import ProfileCompletionService
 from apps.chat.utils import convert_icon_path_to_complete_url
 from apps.chat.prompts import (
     DEFAULT_PROMPT_GUARDRAILS, DEFAULT_PROMPT_SYSTEM, QUERY_CLASSIFICATION_PROMPT, 
-    DEFAULT_ALLOWED_PROMPT_TYPES, DEFAULT_PROMPT_TYPE
+    DEFAULT_ALLOWED_PROMPT_TYPES, DEFAULT_PROMPT_TYPE, ENHANCED_QUERY_CLASSIFICATION_PROMPT
 )
 
 
@@ -41,31 +41,16 @@ class ChatService:
             user: User object for LLM context
             category: The category to check relevance for
             conversation_history: Recent conversation history for context
-            
+        
         Returns:
             bool: True if query is related to health and wellness areas or is profile completion
         """
         try:
-            # Enhanced prompt that includes profile completion detection
-            enhanced_prompt = f"""
-{QUERY_CLASSIFICATION_PROMPT}
-
-IMPORTANT: If the user is providing personal information (age, height, weight, gender) in response to a profile completion request, classify this as ALLOWED even if it doesn't directly relate to health topics.
-
-Examples of profile completion queries that should be ALLOWED:
-- "My age is 25 years"
-- "I am 30 years old"
-- "Height 165, weight 55, age 25 and gender male"
-- "I'm female, 28 years old"
-- "My weight is 70 kg"
-
-User Query: {user_query}
-
-Recent conversation context:
-{conversation_history[-2:] if conversation_history else "No recent context"}
-
-Classification:"""
-            
+            # Use enhanced prompt from prompts.py
+            enhanced_prompt = ENHANCED_QUERY_CLASSIFICATION_PROMPT.format(
+                user_query=user_query,
+                conversation_context=conversation_history[-2:] if conversation_history else "No recent context"
+            )
             response = await process_query_with_prompt(
                 user_message=user_query,
                 system_prompt=enhanced_prompt,

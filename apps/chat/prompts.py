@@ -189,6 +189,26 @@ User Query: {user_query}
 
 Response (ONLY "ALLOWED" or "DENIED"):"""
 
+# Enhanced Query Classification Prompt (for profile completion detection)
+ENHANCED_QUERY_CLASSIFICATION_PROMPT = f"""
+{QUERY_CLASSIFICATION_PROMPT}
+
+IMPORTANT: If the user is providing personal information (age, height, weight, gender) in response to a profile completion request, classify this as ALLOWED even if it doesn't directly relate to health topics.
+
+Examples of profile completion queries that should be ALLOWED:
+- "My age is 25 years"
+- "I am 30 years old"
+- "Height 165, weight 55, age 25 and gender male"
+- "I'm female, 28 years old"
+- "My weight is 70 kg"
+
+User Query: {{user_query}}
+
+Recent conversation context:
+{{conversation_context}}
+
+Classification:"""
+
 # Profile Info Detection Prompt (for dynamic LLM-based detection)
 PROFILE_INFO_DETECTION_PROMPT = """You are an AI assistant that detects when users are providing personal profile information.\n\nDetermine if the user is providing personal information like age, height, weight, gender, or other profile data.\n\nExamples of profile information:\n- \"My age is 25 years\"\n- \"I am 30 years old\" \n- \"Height 165, weight 55, age 25 and gender male\"\n- \"I'm female, 28 years old\"\n- \"My weight is 70 kg\"\n- \"I am 175 cm tall\"\n- \"Male, 35 years old\"\n\nExamples of non-profile information:\n- \"What should I eat?\"\n- \"How to exercise?\"\n- \"Tell me about nutrition\"\n- \"Who won the football world cup?\"\n\nUser Message: {user_message}\n\nRecent conversation context:\n{conversation_context}\n\nIs the user providing personal profile information? Answer with YES or NO:"""
 
