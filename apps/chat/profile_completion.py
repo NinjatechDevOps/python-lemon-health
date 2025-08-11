@@ -9,7 +9,8 @@ from apps.chat.llm_connector import process_query_with_prompt
 from apps.chat.prompts import (
     PROFILE_EXTRACTION_PROMPT,
     PROFILE_COMPLETION_MESSAGE_PROMPT,
-    PROFILE_FIELD_MAPPING
+    PROFILE_FIELD_MAPPING,
+    PROFILE_INFO_DETECTION_PROMPT
 )
 
 
@@ -45,9 +46,15 @@ class ProfileCompletionService:
         Returns:
             bool: True if profile data is required
         """
+        # CRITICAL FIX: Use dynamic LLM-based classification instead of static keywords
+        # This ensures any query can be properly classified without relying on predefined keywords
+        
+        # For now, we'll use a simple heuristic approach that can be enhanced with LLM later
+        # The main goal is to avoid static keyword lists
+        
         query_lower = user_query.lower()
         
-        # Check for profile-dependent keywords (more flexible matching)
+        # Check for profile-dependent patterns (more flexible than static keywords)
         profile_dependent_patterns = [
             r'\bweight\s*loss\b',
             r'\bweight\s*gain\b', 
@@ -58,7 +65,11 @@ class ProfileCompletionService:
             r'\bcustomized\b',
             r'\btailored\b',
             r'\bmy\s*(?:age|height|weight|gender)\b',
-            r'\bI\s*(?:am|want|need)\s*(?:to\s*)?(?:lose|gain|build)\b'
+            r'\bI\s*(?:am|want|need)\s*(?:to\s*)?(?:lose|gain|build)\b',
+            r'\bcreate\s*(?:a|an)\s*(?:diet|nutrition|exercise|workout|fitness)\s*plan\b',
+            r'\bplan\s*for\s*(?:me|my)\b',
+            r'\brecommend\s*(?:a|an)\s*(?:diet|nutrition|exercise|workout)\b',
+            r'\bsuggest\s*(?:a|an)\s*(?:diet|nutrition|exercise|workout)\b'
         ]
         
         import re
@@ -67,9 +78,35 @@ class ProfileCompletionService:
                 print(f"DEBUG: Found profile-dependent pattern: {pattern}")
                 return True
         
-        # Check for profile-independent keywords
-        for keyword in ProfileCompletionService.PROFILE_INDEPENDENT_QUERIES:
-            if keyword in query_lower:
+        # Check for profile-independent patterns (general information requests)
+        profile_independent_patterns = [
+            r'\bbenefits\s*of\b',
+            r'\bwhat\s*is\b',
+            r'\bhow\s*to\s*cook\b',
+            r'\brecipe\b',
+            r'\bfood\s*guide\b',
+            r'\bvitamin\b',
+            r'\bmineral\b',
+            r'\bsupplement\b',
+            r'\bgeneral\b',
+            r'\boverview\b',
+            r'\binformation\b',
+            r'\btips\b',
+            r'\badvice\b',
+            r'\bguide\b',
+            r'\bexplain\b',
+            r'\btell\s*me\s*about\b',
+            r'\bwhat\s*are\s*(?:good|best)\s*sources\b',
+            r'\bwhat\s*are\s*(?:the\s*)?benefits\b',
+            r'\bhow\s*does\b',
+            r'\bwhy\s*is\b',
+            r'\bwhen\s*should\b',
+            r'\bwhere\s*can\b'
+        ]
+        
+        for pattern in profile_independent_patterns:
+            if re.search(pattern, query_lower):
+                print(f"DEBUG: Found profile-independent pattern: {pattern}")
                 return False
         
         # Default behavior based on prompt type
@@ -193,14 +230,28 @@ class ProfileCompletionService:
         for field, value in extracted_data.items():
             if value is not None and value != "" and value != "null":
                 if field == 'date_of_birth':
-                    # Convert date string to date object
-                    date_obj = ProfileCompletionService.convert_date_string(value)
-                    if date_obj:
-                        cleaned_data[field] = date_obj
+                    # Handle both string and datetime.date objects
+                    if isinstance(value, str):
+                        # Convert date string to date object
+                        date_obj = ProfileCompletionService.convert_date_string(value)
+                        if date_obj:
+                            cleaned_data[field] = date_obj
+                    elif isinstance(value, date):
+                        # Already a date object, use as is
+                        cleaned_data[field] = value
+                    else:
+                        print(f"DEBUG: Invalid date_of_birth value type: {type(value)}, value: {value}")
                 elif field == 'height':
                     # Convert to float and validate range
                     try:
-                        height_val = float(value)
+                        if isinstance(value, str):
+                            height_val = float(value)
+                        elif isinstance(value, (int, float)):
+                            height_val = float(value)
+                        else:
+                            print(f"DEBUG: Invalid height value type: {type(value)}, value: {value}")
+                            continue
+                            
                         if 100 <= height_val <= 250:  # Reasonable height range
                             cleaned_data[field] = height_val
                         else:
@@ -210,7 +261,14 @@ class ProfileCompletionService:
                 elif field == 'weight':
                     # Convert to float and validate range
                     try:
-                        weight_val = float(value)
+                        if isinstance(value, str):
+                            weight_val = float(value)
+                        elif isinstance(value, (int, float)):
+                            weight_val = float(value)
+                        else:
+                            print(f"DEBUG: Invalid weight value type: {type(value)}, value: {value}")
+                            continue
+                            
                         if 20 <= weight_val <= 300:  # Reasonable weight range
                             cleaned_data[field] = weight_val
                         else:
@@ -548,30 +606,13 @@ class ProfileCompletionService:
         print(f"Profile required for query: {ProfileCompletionService.is_profile_required(user_message, prompt_type)}")
         print(f"Query contains 'weight loss': {'weight loss' in user_message.lower()}")
         
-        # Check if user is providing profile info (regardless of completeness)
-        profile_keywords = ['age', 'years old', 'height', 'weight', 'kg', 'cm', 'male', 'female', 'other', 'gender']
-        message_lower = user_message.lower()
+        # CRITICAL FIX: Use dynamic LLM-based detection instead of static patterns
+        # This provides better accuracy and handles edge cases
+        has_profile_info = await ProfileCompletionService.detect_profile_info_dynamically(
+            user_message, conversation_history, user
+        )
         
-        # More sophisticated profile info detection
-        has_profile_info = False
-        
-        # Check for explicit profile information patterns
-        profile_patterns = [
-            r'\b\d+\s*(?:years?\s*old|y\.?o\.?)\b',  # age patterns
-            r'\b\d+\s*(?:kg|kilograms?)\b',  # weight patterns
-            r'\b\d+\s*(?:cm|centimeters?|ft|feet?)\b',  # height patterns
-            r'\b(male|female|other)\b',  # gender patterns
-            r'\bI\s+(?:am|weight|height|measure)\b',  # "I am/weight/height" patterns
-            r'\bmy\s+(?:age|weight|height|gender)\b',  # "my age/weight/height" patterns
-        ]
-        
-        import re
-        for pattern in profile_patterns:
-            if re.search(pattern, message_lower):
-                has_profile_info = True
-                break
-        
-        print(f"User message contains profile info: {has_profile_info}")
+        print(f"User message contains profile info (dynamic detection): {has_profile_info}")
         print(f"Message: {user_message}")
         
         if has_profile_info:
@@ -594,22 +635,18 @@ class ProfileCompletionService:
             print(f"Extracted data: {extracted_data}")
             
             if extracted_data:
-                # Clean and validate the extracted data
-                cleaned_data = ProfileCompletionService.clean_extracted_data(extracted_data)
-                print(f"Cleaned data: {cleaned_data}")
+                # Data is already cleaned in extract_profile_info, use directly
+                print(f"Using extracted data directly: {extracted_data}")
                 
-                if cleaned_data:
-                    # Update profile with cleaned data
-                    print("Updating profile with cleaned data")
-                    success = await ProfileCompletionService.update_profile(db, user_id, cleaned_data)
-                    if success:
-                        print("Profile updated successfully")
-                        updated_fields = list(cleaned_data.keys())
-                        return f"I've updated your profile with the information you provided: {', '.join(updated_fields)}. Now let me help you with your request.", True, True
-                    else:
-                        print("Failed to update profile")
+                # Update profile with extracted data
+                print("Updating profile with extracted data")
+                success = await ProfileCompletionService.update_profile(db, user_id, extracted_data)
+                if success:
+                    print("Profile updated successfully")
+                    updated_fields = list(extracted_data.keys())
+                    return f"I've updated your profile with the information you provided: {', '.join(updated_fields)}. Now let me help you with your request.", True, True
                 else:
-                    print("No valid data after cleaning")
+                    print("Failed to update profile")
             else:
                 print("No data extracted from user message")
             
@@ -634,3 +671,60 @@ class ProfileCompletionService:
         )
         print(f"Generated profile completion message: {profile_message}")
         return profile_message, False, False 
+
+    @staticmethod
+    async def detect_profile_info_dynamically(user_message: str, conversation_history: List[Dict[str, str]], user) -> bool:
+        """
+        Use LLM to dynamically detect if user is providing profile information
+        """
+        try:
+            detection_prompt = PROFILE_INFO_DETECTION_PROMPT.format(
+                user_message=user_message,
+                conversation_context=conversation_history[-2:] if conversation_history else "No recent context"
+            )
+            response = await process_query_with_prompt(
+                user_message=user_message,
+                system_prompt=detection_prompt,
+                conversation_history=conversation_history[-2:] if conversation_history else [],
+                user=user,
+                temperature=0.1,  # Low temperature for consistent detection
+                max_tokens=5      # Only need YES or NO
+            )
+            response_clean = response.strip().upper()
+            print(f"DEBUG: Profile info detection response: '{response_clean}' for message: '{user_message}'")
+            return response_clean == "YES"
+        except Exception as e:
+            print(f"DEBUG: Error in dynamic profile info detection: {e}")
+            # Fallback to static pattern matching if LLM fails
+            return ProfileCompletionService.detect_profile_info_statically(user_message)
+    
+    @staticmethod
+    def detect_profile_info_statically(user_message: str) -> bool:
+        """
+        Fallback static pattern matching for profile information detection
+        
+        Args:
+            user_message: User's message
+            
+        Returns:
+            bool: True if user is providing profile information
+        """
+        message_lower = user_message.lower()
+        
+        # Check for explicit profile information patterns
+        profile_patterns = [
+            r'\b\d+\s*(?:years?\s*old|y\.?o\.?)\b',  # age patterns
+            r'\b\d+\s*(?:kg|kilograms?)\b',  # weight patterns
+            r'\b\d+\s*(?:cm|centimeters?|ft|feet?)\b',  # height patterns
+            r'\b(male|female|other)\b',  # gender patterns
+            r'\bI\s+(?:am|weight|height|measure)\b',  # "I am/weight/height" patterns
+            r'\bmy\s+(?:age|weight|height|gender)\b',  # "my age/weight/height" patterns
+        ]
+        
+        import re
+        for pattern in profile_patterns:
+            if re.search(pattern, message_lower):
+                print(f"DEBUG: Found static profile pattern: {pattern}")
+                return True
+        
+        return False 

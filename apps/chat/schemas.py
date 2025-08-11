@@ -63,6 +63,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     conv_id: str  # Changed from chat_id
+    prompt_id: Optional[str] = None  # Made optional for default prompts
     user_query: str
     response: str
     streamed: Optional[bool] = False

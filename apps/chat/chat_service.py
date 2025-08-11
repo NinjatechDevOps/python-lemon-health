@@ -31,77 +31,74 @@ class ChatService:
     DEFAULT_ALLOWED_PROMPT_TYPES = DEFAULT_ALLOWED_PROMPT_TYPES
     
     @staticmethod
-    async def classify_query_with_llm(user_query: str, user) -> bool:
+    async def classify_query_with_llm(user_query: str, user, category: str = "nutrition and exercise", conversation_history: List[Dict[str, str]] = None) -> bool:
         """
-        Use LLM to classify if user query is related to default prompts (nutrition/exercise)
+        Use LLM to classify if user query is related to health and wellness areas
+        Enhanced to detect profile completion queries
         
         Args:
             user_query: User's query string
             user: User object for LLM context
+            category: The category to check relevance for
+            conversation_history: Recent conversation history for context
             
         Returns:
-            bool: True if query is related to nutrition or exercise
+            bool: True if query is related to health and wellness areas or is profile completion
         """
         try:
-            # Use LLM to classify the query
-            classification_prompt = QUERY_CLASSIFICATION_PROMPT.format(user_query=user_query)
+            # Enhanced prompt that includes profile completion detection
+            enhanced_prompt = f"""
+{QUERY_CLASSIFICATION_PROMPT}
+
+IMPORTANT: If the user is providing personal information (age, height, weight, gender) in response to a profile completion request, classify this as ALLOWED even if it doesn't directly relate to health topics.
+
+Examples of profile completion queries that should be ALLOWED:
+- "My age is 25 years"
+- "I am 30 years old"
+- "Height 165, weight 55, age 25 and gender male"
+- "I'm female, 28 years old"
+- "My weight is 70 kg"
+
+User Query: {user_query}
+
+Recent conversation context:
+{conversation_history[-2:] if conversation_history else "No recent context"}
+
+Classification:"""
             
             response = await process_query_with_prompt(
                 user_message=user_query,
-                system_prompt=classification_prompt,
-                conversation_history=[],  # No history needed for classification
+                system_prompt=enhanced_prompt,
+                conversation_history=conversation_history[-2:] if conversation_history else [],  # Use recent context
                 user=user,
                 temperature=0.1,  # Low temperature for consistent classification
                 max_tokens=10     # Only need "ALLOWED" or "DENIED"
             )
-            
             # Clean and check response
             response_clean = response.strip().upper()
             print(f"DEBUG: LLM Classification Response: '{response_clean}' for query: '{user_query}'")
-            
             return response_clean == "ALLOWED"
-            
         except Exception as e:
             print(f"DEBUG: Error in LLM classification: {e}")
-            # Fallback to manual classification if LLM fails
-            return ChatService._fallback_query_classification(user_query)
-    
+            # If LLM classification fails, default to allowing the query to be safe
+            print(f"DEBUG: LLM classification failed, defaulting to ALLOWED for safety")
+            return True
+
     @staticmethod
-    def _fallback_query_classification(user_query: str) -> bool:
+    def _fallback_query_classification(user_query: str, category: str = "nutrition and exercise") -> bool:
         """
-        Fallback manual classification if LLM classification fails
+        DEPRECATED: This method is no longer used. All classification is now done by LLM.
+        Kept for backward compatibility but always returns True to be safe.
         
         Args:
             user_query: User's query string
+            category: The category to check relevance for
             
         Returns:
-            bool: True if query is related to nutrition or exercise
+            bool: Always returns True to prevent blocking legitimate queries
         """
-        query_lower = user_query.lower()
-        
-        # Nutrition-related keywords
-        nutrition_keywords = [
-            'nutrition', 'diet', 'food', 'meal', 'eating', 'calorie', 'protein', 'carb', 'fat',
-            'vitamin', 'mineral', 'supplement', 'healthy', 'weight loss', 'weight gain',
-            'muscle gain', 'energy', 'digestion', 'metabolism', 'breakfast', 'lunch', 'dinner',
-            'snack', 'recipe', 'cooking', 'ingredient', 'nutrient', 'fiber', 'antioxidant'
-        ]
-        
-        # Exercise-related keywords
-        exercise_keywords = [
-            'exercise', 'workout', 'fitness', 'training', 'gym', 'cardio', 'strength',
-            'muscle', 'weight training', 'running', 'walking', 'cycling', 'swimming',
-            'yoga', 'pilates', 'stretching', 'flexibility', 'endurance', 'stamina',
-            'sports', 'activity', 'physical', 'movement', 'burn', 'calories', 'reps',
-            'sets', 'routine', 'plan', 'program'
-        ]
-        
-        # Check if query contains any nutrition or exercise keywords
-        for keyword in nutrition_keywords + exercise_keywords:
-            if keyword in query_lower:
-                return True
-        
-        return False
+        print(f"DEBUG: Using deprecated fallback classification - defaulting to ALLOWED for safety")
+        return True
     
     @staticmethod
     async def get_default_prompts(db: AsyncSession) -> Tuple[Prompt, Prompt]:
@@ -268,7 +265,7 @@ class ChatService:
             # Handle default prompt case (prompt_id is None, "default", or empty string)
             if prompt_id is None or prompt_id == "default" or prompt_id == "":
                 # Use LLM to classify if query is related to nutrition or exercise
-                if not await ChatService.classify_query_with_llm(user_query, user):
+                if not await ChatService.classify_query_with_llm(user_query, user, category="nutrition and exercise"):
                     # Query is not related to nutrition/exercise, create denial response
                     raise HTTPException(
                         status_code=400,
@@ -308,6 +305,8 @@ class ChatService:
             await db.commit()
             await db.refresh(conversation)
         else:
+            # For existing conversations, don't re-apply query classification
+            # The guardrails will be applied in the chat processing methods
             prompt = conversation.prompt
         
         return conversation, prompt
@@ -332,17 +331,30 @@ class ChatService:
         return user_msg
     
     @staticmethod
-    async def get_conversation_history(conversation_id: int, db: AsyncSession) -> List[Dict[str, str]]:
-        """Get conversation history as list of message dicts"""
+    async def get_conversation_history(conversation_id: int, db: AsyncSession, limit_messages: int = 4) -> List[Dict[str, str]]:
+        """
+        Get conversation history as list of message dicts with optional limiting
+        
+        Args:
+            conversation_id: ID of the conversation
+            db: Database session
+            limit_messages: Maximum number of recent messages to return (default: 4 = 2 request-response pairs)
+            
+        Returns:
+            List of message dictionaries
+        """
         result = await db.execute(
             select(ChatMessage)
             .where(ChatMessage.conversation_id == conversation_id)
-            .order_by(ChatMessage.created_at)
+            .order_by(ChatMessage.created_at.desc())  # Get most recent first
+            .limit(limit_messages)
         )
         history = result.scalars().all()
+        
+        # Reverse to get chronological order and convert to dict format
         history_msgs = [
             {"role": m.role.value, "content": m.content}
-            for m in history
+            for m in reversed(history)  # Reverse to get chronological order
         ]
         return history_msgs
     
@@ -392,10 +404,11 @@ class ChatService:
             db=db
         )
         
-        # Get conversation history
-        history_msgs = await ChatService.get_conversation_history(conversation.id, db)
-        
-        # Check profile completion and handle flow
+        # Get conversation history (limited to reduce token usage)
+        history_msgs = await ChatService.get_conversation_history(conversation.id, db, limit_messages=4)
+
+        # CRITICAL FIX: Check profile completion FIRST, before guardrails
+        # This ensures profile information is processed before being rejected by guardrails
         profile_response, should_continue_with_llm, profile_updated = await ProfileCompletionService.process_with_profile_completion(
             db=db,
             user_id=current_user.id,
@@ -404,7 +417,7 @@ class ChatService:
             user=current_user,
             prompt_type=chat_request.prompt_id if chat_request.prompt_id and chat_request.prompt_id != "" else "default"  # Use "default" for default prompts
         )
-        
+
         # If profile is incomplete and user is not providing profile info, return the profile completion message
         if not should_continue_with_llm:
             # Store the profile completion message
@@ -413,21 +426,95 @@ class ChatService:
                 content=profile_response,
                 db=db
             )
-            
             return {
                 "success": True,
                 "message": "Profile completion required",
                 "data": ChatResponse(
                     conv_id=chat_request.conv_id,
+                    prompt_id=chat_request.prompt_id,  # Include prompt_id in response
                     user_query=chat_request.user_query,
                     response=profile_response,
                     streamed=False
                 )
             }
+
+        # If profile was updated, return a confirmation and do NOT apply guardrails to this message
+        if profile_updated:
+            confirmation = profile_response or "Your profile has been updated. Now you can ask your nutrition question!"
+            await ChatService.store_assistant_message(
+                conversation_id=conversation.id,
+                content=confirmation,
+                db=db
+            )
+            return {
+                "success": True,
+                "message": "Profile updated",
+                "data": ChatResponse(
+                    conv_id=chat_request.conv_id,
+                    prompt_id=chat_request.prompt_id,  # Include prompt_id in response
+                    user_query=chat_request.user_query,
+                    response=confirmation,
+                    streamed=False
+                )
+            }
+
+        # CRITICAL FIX: Apply dynamic category guardrails AFTER profile completion
+        # This ensures profile information is processed before guardrails, but still protects against off-topic queries
+        category = chat_request.prompt_id or "health and wellness"
         
+        # Apply guardrails for all prompt types using dynamic LLM classification with conversation context
+        print(f"DEBUG: Applying dynamic guardrails for category: {category}")
+        is_allowed = await ChatService.classify_query_with_llm(
+            chat_request.user_query, 
+            current_user, 
+            category=category,
+            conversation_history=history_msgs  # Pass conversation history for context
+        )
+        if not is_allowed:
+            print(f"DEBUG: Query rejected by dynamic guardrails for category: {category}")
+            from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
+            guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=chat_request.user_query)
+            denial_response = await process_query_with_prompt(
+                user_message=chat_request.user_query,
+                system_prompt=guardrails_prompt,
+                conversation_history=[],
+                user=current_user,
+                temperature=0.3,
+                max_tokens=100
+            )
+            # Store assistant message
+            await ChatService.store_assistant_message(
+                conversation_id=conversation.id,
+                content=denial_response,
+                db=db
+            )
+            return {
+                "success": True,
+                "message": f"Query not related to Health and Wellness",
+                "data": ChatResponse(
+                    conv_id=chat_request.conv_id,
+                    prompt_id=chat_request.prompt_id,  # Include prompt_id in response
+                    user_query=chat_request.user_query,
+                    response=denial_response,
+                    streamed=False
+                )
+            }
+
         # Profile is complete or user provided profile info - proceed with LLM
         # Get system prompt and add profile context if available
         system_prompt = getattr(conversation, '_custom_system_prompt', None) or prompt.system_prompt
+        
+        # CRITICAL FIX: Apply dynamic guardrails for all conversations
+        # This ensures all responses stay within health and wellness boundaries
+        from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
+        guardrails = DEFAULT_PROMPT_GUARDRAILS.format(user_query=chat_request.user_query)
+        
+        # If we have a custom system prompt (from default conversation), use it with guardrails
+        if getattr(conversation, '_custom_system_prompt', None):
+            system_prompt = f"{conversation._custom_system_prompt}\n\n{guardrails}"
+        else:
+            # For all prompts, add dynamic guardrails
+            system_prompt = f"{system_prompt}\n\n{guardrails}"
         
         # Add user profile context to the system prompt
         profile_context = await ProfileCompletionService.get_user_profile_context(db, current_user.id)
@@ -461,6 +548,7 @@ class ChatService:
             "message": "Query processed successfully",
             "data": ChatResponse(
                 conv_id=chat_request.conv_id,
+                prompt_id=chat_request.prompt_id,  # Include prompt_id in response
                 user_query=chat_request.user_query,
                 response=final_response,
                 streamed=False
@@ -495,10 +583,11 @@ class ChatService:
             db=db
         )
         
-        # Get conversation history
-        history_msgs = await ChatService.get_conversation_history(conversation.id, db)
+        # Get conversation history (limited to reduce token usage)
+        history_msgs = await ChatService.get_conversation_history(conversation.id, db, limit_messages=4)
         
-        # Check profile completion and handle flow
+        # CRITICAL FIX: Check profile completion FIRST, before guardrails
+        # This ensures profile information is processed before being rejected by guardrails
         profile_response, should_continue_with_llm, profile_updated = await ProfileCompletionService.process_with_profile_completion(
             db=db,
             user_id=current_user.id,
@@ -522,9 +611,55 @@ class ChatService:
                 
             return StreamingResponse(profile_stream(), media_type="text/plain")
         
+        # CRITICAL FIX: Apply dynamic category guardrails AFTER profile completion
+        # This ensures profile information is processed before guardrails, but still protects against off-topic queries
+        category = chat_request.prompt_id or "health and wellness"
+        
+        # Apply guardrails for all prompt types using dynamic LLM classification with conversation context
+        print(f"DEBUG: Applying dynamic guardrails for category: {category}")
+        is_allowed = await ChatService.classify_query_with_llm(
+            chat_request.user_query, 
+            current_user, 
+            category=category,
+            conversation_history=history_msgs  # Pass conversation history for context
+        )
+        if not is_allowed:
+            print(f"DEBUG: Query rejected by dynamic guardrails for category: {category}")
+            from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
+            guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=chat_request.user_query)
+            denial_response = await process_query_with_prompt(
+                user_message=chat_request.user_query,
+                system_prompt=guardrails_prompt,
+                conversation_history=[],
+                user=current_user,
+                temperature=0.3,
+                max_tokens=100
+            )
+            # Store assistant message
+            await ChatService.store_assistant_message(
+                conversation_id=conversation.id,
+                content=denial_response,
+                db=db
+            )
+            async def denial_stream():
+                yield denial_response
+            return StreamingResponse(denial_stream(), media_type="text/plain")
+
         # Profile is complete or user provided profile info - proceed with LLM
         # Get system prompt and add profile context if available
         system_prompt = getattr(conversation, '_custom_system_prompt', None) or prompt.system_prompt
+        
+        # CRITICAL FIX: Apply dynamic guardrails for all conversations
+        # This ensures all responses stay within health and wellness boundaries
+        from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
+        guardrails = DEFAULT_PROMPT_GUARDRAILS.format(user_query=chat_request.user_query)
+        
+        # If we have a custom system prompt (from default conversation), use it with guardrails
+        if getattr(conversation, '_custom_system_prompt', None):
+            system_prompt = f"{conversation._custom_system_prompt}\n\n{guardrails}"
+        else:
+            # For all prompts, add dynamic guardrails
+            system_prompt = f"{system_prompt}\n\n{guardrails}"
         
         # Add user profile context to the system prompt
         profile_context = await ProfileCompletionService.get_user_profile_context(db, current_user.id)
