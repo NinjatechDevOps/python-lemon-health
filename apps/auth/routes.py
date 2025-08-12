@@ -475,3 +475,23 @@ async def logout(
         }
     )
 
+@router.delete("/me", response_model=BaseResponse)
+async def delete_me(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Soft delete the current authenticated user (set is_active=False)
+    """
+    if not current_user.is_active:
+        return api_error_response(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="User is already inactive."
+        )
+    await AuthService.soft_delete_user(db, current_user)
+    return api_response(
+        success=True,
+        message="User account deleted (soft delete).",
+        data={"user_id": current_user.id}
+    )
+

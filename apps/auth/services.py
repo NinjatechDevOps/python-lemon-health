@@ -421,3 +421,11 @@ class AuthService:
                 logger.error(f"Error blacklisting refresh token: {e}")
         
         return True
+
+    @staticmethod
+    async def soft_delete_user(db: AsyncSession, user: User) -> User:
+        """Soft delete a user by setting is_active to False"""
+        user.is_active = False
+        await db.commit()
+        await db.refresh(user)
+        return user
