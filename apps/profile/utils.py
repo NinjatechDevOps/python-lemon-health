@@ -1,6 +1,10 @@
+import logging
 from datetime import datetime
 from typing import Optional, Tuple
 from apps.core.config import settings
+from apps.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 def api_response(success: bool, message: str, data: dict = None):
     return {
@@ -34,7 +38,7 @@ def convert_form_data_to_profile_update(
     from apps.profile.schemas import ProfileUpdate
     
     # Debug logging
-    print(f"DEBUG - Raw form data: date_of_birth={date_of_birth}, height={height}, height_unit={height_unit}, weight={weight}, gender={gender}")
+    logger.debug(f"Raw form data: date_of_birth={date_of_birth}, height={height}, height_unit={height_unit}, weight={weight}, gender={gender}")
     
     # Convert string values to appropriate types
     converted_data = {}
@@ -46,10 +50,10 @@ def convert_form_data_to_profile_update(
             # Parse the date string to datetime.date object
             parsed_date = datetime.strptime(date_of_birth, "%Y-%m-%d").date()
             converted_data["date_of_birth"] = parsed_date
-            print(f"DEBUG - Converted date_of_birth: {parsed_date}")
+            logger.debug(f"Converted date_of_birth: {parsed_date}")
         except ValueError as e:
             error_msg = f"Invalid date format: {date_of_birth}. Expected YYYY-MM-DD"
-            print(f"DEBUG - Date conversion failed: {error_msg}")
+            logger.error(f"Date conversion failed: {error_msg}")
             errors.append(error_msg)
     
     # Convert height string to float
@@ -57,10 +61,10 @@ def convert_form_data_to_profile_update(
         try:
             height_value = float(height)
             converted_data["height"] = height_value
-            print(f"DEBUG - Converted height: {height_value}")
+            logger.debug(f"Converted height: {height_value}")
         except ValueError as e:
             error_msg = f"Invalid height value: {height}. Must be a number"
-            print(f"DEBUG - Height conversion failed: {error_msg}")
+            logger.error(f"Height conversion failed: {error_msg}")
             errors.append(error_msg)
     
     # Convert weight string to float
@@ -68,22 +72,22 @@ def convert_form_data_to_profile_update(
         try:
             weight_value = float(weight)
             converted_data["weight"] = weight_value
-            print(f"DEBUG - Converted weight: {weight_value}")
+            logger.debug(f"Converted weight: {weight_value}")
         except ValueError as e:
             error_msg = f"Invalid weight value: {weight}. Must be a number"
-            print(f"DEBUG - Weight conversion failed: {error_msg}")
+            logger.error(f"Weight conversion failed: {error_msg}")
             errors.append(error_msg)
     
     # String fields that don't need conversion
     if height_unit:
         converted_data["height_unit"] = height_unit
-        print(f"DEBUG - Height unit: {height_unit}")
+        logger.debug(f"Height unit: {height_unit}")
     
     if gender:
         converted_data["gender"] = gender
-        print(f"DEBUG - Gender: {gender}")
+        logger.debug(f"Gender: {gender}")
     
-    print(f"DEBUG - Final converted data: {converted_data}")
+    logger.debug(f"Final converted data: {converted_data}")
     
     # Return error if any validation failed
     if errors:

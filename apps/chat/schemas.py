@@ -1,6 +1,10 @@
+import logging
+from apps.core.logging_config import get_logger
 from typing import Optional, Generic, TypeVar, List
 from enum import Enum
 from pydantic import BaseModel
+
+logger = get_logger(__name__)
 
 class PromptType(str, Enum):
     BOOKING = "booking"

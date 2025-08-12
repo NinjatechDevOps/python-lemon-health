@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,6 +7,9 @@ from apps.auth.models import User
 from apps.core.security import get_password_hash, verify_password, create_access_token, create_refresh_token
 from apps.admin_panel.schemas import AdminCreateUserRequest, AdminUpdateUserRequest
 from apps.chat.models import Conversation, ChatMessage, Prompt
+from apps.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class AdminService:
@@ -82,14 +86,14 @@ class AdminService:
         user_agent: Optional[str] = None
     ) -> None:
         """
-        Log admin activity for audit purposes (currently prints to console)
+        Log admin activity for audit purposes (now uses logger)
         """
         try:
-            print(f"Admin Activity: {action} by admin {admin_user_id} on user {target_user_id}")
+            logger.info(f"Admin Activity: {action} by admin {admin_user_id} on user {target_user_id}")
             if details:
-                print(f"Details: {details}")
+                logger.info(f"Details: {details}")
         except Exception as e:
-            print(f"Error logging admin activity: {e}")
+            logger.error(f"Error logging admin activity: {e}")
     
     @staticmethod
     async def get_dashboard_stats(
@@ -180,7 +184,7 @@ class AdminService:
             }
             
         except Exception as e:
-            print(f"Error getting dashboard stats: {e}")
+            logger.error(f"Error getting dashboard stats: {e}")
             return {
                 "total_users": 0,
                 "active_users": 0,
@@ -256,7 +260,7 @@ class AdminService:
             return users, total
             
         except Exception as e:
-            print(f"Error getting users list: {e}")
+            logger.error(f"Error getting users list: {e}")
             return [], 0
     
     @staticmethod
@@ -384,7 +388,7 @@ class AdminService:
             result = await db.execute(select(User).where(User.id == user_id))
             return result.scalar_one_or_none()
         except Exception as e:
-            print(f"Error getting user by ID: {e}")
+            logger.error(f"Error getting user by ID: {e}")
             return None
 
     # Admin Chat History Methods
@@ -490,7 +494,7 @@ class AdminService:
             return conversation_items, total
             
         except Exception as e:
-            print(f"Error getting admin chat history list: {e}")
+            logger.error(f"Error getting admin chat history list: {e}")
             return [], 0
     
     @staticmethod
@@ -549,5 +553,5 @@ class AdminService:
             }
             
         except Exception as e:
-            print(f"Error getting admin chat history detail: {e}")
+            logger.error(f"Error getting admin chat history detail: {e}")
             return None 

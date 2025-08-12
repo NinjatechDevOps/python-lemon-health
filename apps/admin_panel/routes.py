@@ -1,6 +1,7 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple, List
 from fastapi import APIRouter, Depends, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from apps.core.db import get_db
 from apps.auth.models import User
 from apps.admin_panel.deps import get_current_admin_user, get_admin_request_info
@@ -10,6 +11,9 @@ from apps.admin_panel.schemas import (
     AdminChatHistoryListResponse
 )
 from apps.admin_panel.services import AdminService
+from apps.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # Create admin router
 admin_router = APIRouter(tags=["Admin"])
@@ -57,6 +61,7 @@ async def admin_login(
         }
         
     except Exception as e:
+        logger.error(f"Login error: {str(e)}")
         return {
             "success": False,
             "message": f"Login error: {str(e)}",
@@ -92,6 +97,7 @@ async def get_dashboard_stats(
         }
         
     except Exception as e:
+        logger.error(f"Error retrieving dashboard stats: {str(e)}")
         return {
             "success": False,
             "message": f"Error retrieving dashboard stats: {str(e)}",
@@ -163,6 +169,7 @@ async def get_users_list(
         }
         
     except Exception as e:
+        logger.error(f"Error retrieving users: {str(e)}")
         return {
             "success": False,
             "message": f"Error retrieving users: {str(e)}",
@@ -208,6 +215,7 @@ async def get_user_details(
         }
         
     except Exception as e:
+        logger.error(f"Error retrieving user details: {str(e)}")
         return {
             "success": False,
             "message": f"Error retrieving user details: {str(e)}",
@@ -284,6 +292,7 @@ async def create_user(
         }
         
     except Exception as e:
+        logger.error(f"Error creating user: {str(e)}")
         return {
             "success": False,
             "message": f"Error creating user: {str(e)}",
@@ -356,6 +365,7 @@ async def update_user(
         }
         
     except Exception as e:
+        logger.error(f"Error updating user: {str(e)}")
         return {
             "success": False,
             "message": f"Error updating user: {str(e)}",
@@ -430,6 +440,7 @@ async def get_admin_chat_history_list(
         }
         
     except Exception as e:
+        logger.error(f"Error retrieving chat history list: {str(e)}")
         return {
             "success": False,
             "message": f"Error retrieving chat history list: {str(e)}",
@@ -494,6 +505,7 @@ async def get_admin_chat_history_detail(
         }
         
     except Exception as e:
+        logger.error(f"Error retrieving chat history detail: {str(e)}")
         return {
             "success": False,
             "message": f"Error retrieving chat history detail: {str(e)}",

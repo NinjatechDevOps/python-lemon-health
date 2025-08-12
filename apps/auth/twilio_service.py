@@ -18,8 +18,8 @@
 #     def __init__(self):
 #         """Initialize Twilio client"""
 #         # Debug: Print Twilio credentials
-#         print(f"DEBUG - TWILIO_ACCOUNT_SID: {settings.TWILIO_ACCOUNT_SID}")
-#         print(f"DEBUG - TWILIO_PHONE_NUMBER: {settings.TWILIO_PHONE_NUMBER}")
+#         logger.debug(f"DEBUG - TWILIO_ACCOUNT_SID: {settings.TWILIO_ACCOUNT_SID}")
+#         logger.debug(f"DEBUG - TWILIO_PHONE_NUMBER: {settings.TWILIO_PHONE_NUMBER}")
         
 #         self.client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
 #         self.phone_number = settings.TWILIO_PHONE_NUMBER
@@ -41,9 +41,9 @@
 #         """
 #         try:
 #             # Debug: Print SMS parameters
-#             print(f"DEBUG - Sending SMS to: {to_phone}")
-#             print(f"DEBUG - From phone: {self.phone_number}")
-#             print(f"DEBUG - Message: {message}")
+#             logger.debug(f"DEBUG - Sending SMS to: {to_phone}")
+#             logger.debug(f"DEBUG - From phone: {self.phone_number}")
+#             logger.debug(f"DEBUG - Message: {message}")
             
 #             self.client.messages.create(
 #                 body=message,
@@ -57,22 +57,22 @@
             
 #             # Handle specific Twilio error codes
 #             if error_code == 20003:
-#                 print(f"Twilio authentication error: {error_msg}")
+#                 logger.error(f"Twilio authentication error: {error_msg}")
 #                 return False, "Verification code created but SMS delivery failed. You can request a new code."
 #             elif error_code == 21211:
-#                 print(f"Invalid phone number: {error_msg}")
+#                 logger.error(f"Invalid phone number: {error_msg}")
 #                 return False, "Invalid phone number format. Please check your number and try again."
 #             elif error_code == 21608:
-#                 print(f"Unverified phone number: {error_msg}")
+#                 logger.error(f"Unverified phone number: {error_msg}")
 #                 return False, "This phone number is not verified with our SMS service. Please contact support."
 #             elif error_code == 21610:
-#                 print(f"Message body too long: {error_msg}")
+#                 logger.error(f"Message body too long: {error_msg}")
 #                 return False, "Verification code created but SMS delivery failed. You can request a new code."
 #             else:
-#                 print(f"Twilio error {error_code}: {error_msg}")
+#                 logger.error(f"Twilio error {error_code}: {error_msg}")
 #                 return False, "Verification code created but SMS delivery failed. You can request a new code."
 #         except Exception as e:
-#             print(f"Unexpected error sending SMS: {str(e)}")
+#             logger.error(f"Unexpected error sending SMS: {str(e)}")
 #             return False, "Verification code created but SMS delivery failed. You can request a new code."
     
 #     async def create_verification_code(
@@ -139,7 +139,7 @@
 #         )
         
 #         # Debug: Print verification code details
-#         print(f"DEBUG - Creating verification code: type={verification_type}, code={code}, user_id={user_id}, mobile={mobile_number}")
+#         logger.debug(f"DEBUG - Creating verification code: type={verification_type}, code={code}, user_id={user_id}, mobile={mobile_number}")
         
 #         db.add(verification_code)
 #         await db.commit()
@@ -199,17 +199,17 @@
 #             )
         
 #         # Debug: Print query parameters
-#         print(f"DEBUG - Verification query params: type={verification_type}, code={code}, user_id={user_id}, mobile={mobile_number}, country={country_code}")
+#         logger.debug(f"DEBUG - Verification query params: type={verification_type}, code={code}, user_id={user_id}, mobile={mobile_number}, country={country_code}")
         
 #         result = await db.execute(query)
 #         verification_code = result.scalars().first()
         
 #         if not verification_code:
-#             print(f"DEBUG - No verification code found for: type={verification_type}, code={code}, user_id={user_id}")
+#             logger.warning(f"DEBUG - No verification code found for: type={verification_type}, code={code}, user_id={user_id}")
 #             return False, "Invalid or expired verification code"
         
 #         # Debug: Print found verification code details
-#         print(f"DEBUG - Found verification code: id={verification_code.id}, user_id={verification_code.user_id}, mobile={verification_code.mobile_number}")
+#         logger.debug(f"DEBUG - Found verification code: id={verification_code.id}, user_id={verification_code.user_id}, mobile={verification_code.mobile_number}")
         
 #         # Mark code as used
 #         verification_code.is_used = True
@@ -235,6 +235,10 @@ import random
 import string
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
+import logging
+from apps.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -248,8 +252,8 @@ class TwilioService:
 
     def __init__(self):
         """Mocked Twilio client init"""
-        print(f"MOCK - TWILIO_ACCOUNT_SID: {settings.TWILIO_ACCOUNT_SID}")
-        print(f"MOCK - TWILIO_PHONE_NUMBER: {settings.TWILIO_PHONE_NUMBER}")
+        logger.info(f"MOCK - TWILIO_ACCOUNT_SID: {settings.TWILIO_ACCOUNT_SID}")
+        logger.info(f"MOCK - TWILIO_PHONE_NUMBER: {settings.TWILIO_PHONE_NUMBER}")
         self.phone_number = settings.TWILIO_PHONE_NUMBER
 
     def _generate_verification_code(self, length: int = 6) -> str:
@@ -258,11 +262,11 @@ class TwilioService:
 
     def send_sms(self, to_phone: str, message: str) -> tuple[bool, str]:
         """
-        Mock sending SMS message by printing to console instead of real Twilio call
+        Mock sending SMS message by logging instead of real Twilio call
         """
-        print(f"MOCK - Pretending to send SMS to: {to_phone}")
-        print(f"MOCK - From phone: {self.phone_number}")
-        print(f"MOCK - Message: {message}")
+        logger.info(f"MOCK - Pretending to send SMS to: {to_phone}")
+        logger.info(f"MOCK - From phone: {self.phone_number}")
+        logger.info(f"MOCK - Message: {message}")
         return True, "MOCK SMS sent successfully"
 
     async def create_verification_code(
@@ -308,7 +312,7 @@ class TwilioService:
             country_code=country_code
         )
 
-        print(f"MOCK - Creating static verification code: type={verification_type}, code={code}, user_id={user_id}, mobile={mobile_number}")
+        logger.info(f"MOCK - Creating static verification code: type={verification_type}, code={code}, user_id={user_id}, mobile={mobile_number}")
 
         db.add(verification_code)
         await db.commit()
@@ -350,16 +354,16 @@ class TwilioService:
                 VerificationCode.country_code == country_code
             )
 
-        print(f"MOCK - Verifying static code: type={verification_type}, code={code}, user_id={user_id}, mobile={mobile_number}")
+        logger.info(f"MOCK - Verifying static code: type={verification_type}, code={code}, user_id={user_id}, mobile={mobile_number}")
 
         result = await db.execute(query)
         verification_code = result.scalars().first()
 
         if not verification_code:
-            print(f"MOCK - No static verification code match found")
+            logger.warning(f"MOCK - No static verification code match found")
             return False, "Invalid or expired verification code"
 
-        print(f"MOCK - Static code matched: id={verification_code.id}, user_id={verification_code.user_id}")
+        logger.info(f"MOCK - Static code matched: id={verification_code.id}, user_id={verification_code.user_id}")
 
         verification_code.is_used = True
         await db.commit()

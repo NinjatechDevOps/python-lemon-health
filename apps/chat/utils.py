@@ -1,5 +1,9 @@
+import logging
+from apps.core.logging_config import get_logger
 from typing import Optional
 from apps.core.config import settings
+
+logger = get_logger(__name__)
 
 def convert_icon_path_to_complete_url(icon_path: Optional[str]) -> Optional[str]:
     """

@@ -1,4 +1,6 @@
-from typing import Dict, Any, Optional
+import logging
+from typing import Dict, Any, Optional, List
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, UploadFile, File
 from fastapi.responses import  JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +13,7 @@ from apps.chat.models import PromptType
 from apps.chat.schemas import (
     PromptListResponse, BaseResponse, ChatRequest, ChatResponse, ChatHistoryResponse,
     ChatHistoryListResponse, PaginationInfo, DocumentUploadResponse, DocumentResponse,
-    DocumentListResponse, DocumentAnalysisRequest
+    DocumentListResponse, DocumentAnalysisRequest, PromptResponse, DocumentAnalysisResponse
 )
 from apps.chat.document_service import DocumentService
 from apps.chat.chat_service import ChatService
@@ -19,6 +21,9 @@ from apps.chat.utils import convert_file_path_to_complete_url
 import asyncio
 import math
 import json
+from apps.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # Create separate routers with different tags
 chat_router = APIRouter(tags=["Chat"])
@@ -39,6 +44,7 @@ async def get_prompts(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
             "data": PromptListResponse(prompts=prompt_list)
         }
     except Exception as e:
+        logger.error(f"Error retrieving prompts: {e}")
         return JSONResponse(
             status_code=500,
             content={
@@ -101,6 +107,7 @@ async def chat(
             }
         raise
     except Exception as e:
+        logger.error(f"An error occurred while processing your request: {e}")
         return JSONResponse(
             status_code=500,
             content={
@@ -130,6 +137,7 @@ async def get_chat_history(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"An error occurred while fetching chat history: {e}")
         return JSONResponse(
             status_code=500,
             content={
@@ -170,6 +178,7 @@ async def get_user_chat_history(
         }
         
     except Exception as e:
+        logger.error(f"An error occurred while fetching chat history: {e}")
         return JSONResponse(
             status_code=500,
             content={
@@ -223,6 +232,7 @@ async def upload_document(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error uploading document: {e}")
         return JSONResponse(
             status_code=500,
             content={
@@ -299,6 +309,7 @@ async def get_user_documents(
         }
         
     except Exception as e:
+        logger.error(f"Error retrieving documents: {e}")
         return JSONResponse(
             status_code=500,
             content={
@@ -350,6 +361,7 @@ async def analyze_document(
         }
         
     except Exception as e:
+        logger.error(f"Error analyzing document: {e}")
         return JSONResponse(
             status_code=500,
             content={

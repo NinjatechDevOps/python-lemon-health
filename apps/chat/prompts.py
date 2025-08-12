@@ -5,7 +5,11 @@ This module contains all the prompts used in the chat functionality,
 excluding the six stored prompts (Booking, Shop, Nutrition, Exercise, Documents, Prescriptions).
 """
 
+import logging
+from apps.core.logging_config import get_logger
 from apps.chat.models import PromptType
+
+logger = get_logger(__name__)
 
 # Profile Completion Prompts
 PROFILE_EXTRACTION_PROMPT = """You are a profile completion assistant. Extract the following missing profile information from the user's message: {missing_fields}.

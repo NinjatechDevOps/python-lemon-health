@@ -13,6 +13,10 @@ from apps.core.security import create_access_token, create_refresh_token, get_pa
 from apps.auth.models import User, VerificationType
 from apps.auth.twilio_service import twilio_service
 from apps.auth.schemas import VerificationTypeEnum
+import logging
+from apps.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class AuthService:
@@ -321,33 +325,33 @@ class AuthService:
         from apps.core.security import verify_token
 
         try:
-            print("DEBUG: Received refresh_token:", refresh_token)
+            logger.debug(f"Received refresh_token: {refresh_token}")
             # Verify the refresh token
             payload = await verify_token(refresh_token)
-            print("DEBUG: Decoded payload:", payload)
+            logger.debug(f"Decoded payload: {payload}")
 
             # Check if it's actually a refresh token
             if payload.get("token_type") != "refresh":
-                print("DEBUG: Not a refresh token, payload:", payload)
+                logger.debug(f"Not a refresh token, payload: {payload}")
                 return False, "Invalid token type"
 
             # Get user ID from token
             user_id = payload.get("sub")
             if not user_id:
-                print("DEBUG: No user_id in payload:", payload)
+                logger.debug(f"No user_id in payload: {payload}")
                 return False, "Invalid token"
 
             # Get user from database
             user = await AuthService.get_user_by_id(db, int(user_id))
-            print("DEBUG: User from DB:", user)
+            logger.debug(f"User from DB: {user}")
 
             if not user:
-                print("DEBUG: User not found for user_id:", user_id)
+                logger.debug(f"User not found for user_id: {user_id}")
                 return False, "User not found"
 
             # Check if user is active
             if not user.is_active:
-                print("DEBUG: User is not active:", user_id)
+                logger.debug(f"User is not active: {user_id}")
                 return False, "Inactive user"
 
             # Generate new access token
@@ -362,7 +366,7 @@ class AuthService:
                 extra_data={"is_admin": user.is_admin}
             )
 
-            print("DEBUG: New tokens generated for user_id:", user_id)
+            logger.debug(f"New tokens generated for user_id: {user_id}")
             return True, {
                 "access_token": new_access_token,
                 "refresh_token": new_refresh_token,
@@ -370,7 +374,7 @@ class AuthService:
             }
 
         except Exception as e:
-            print("DEBUG: Exception in refresh_token:", str(e))
+            logger.error(f"Exception in refresh_token: {str(e)}")
             return False, "Invalid refresh token"
     
     @staticmethod
@@ -405,7 +409,7 @@ class AuthService:
                     # Add to blacklist with remaining time
                     await add_token_to_blacklist(access_token, remaining)
         except Exception as e:
-            print(f"Error blacklisting access token: {e}")
+            logger.error(f"Error blacklisting access token: {e}")
         
         # Blacklist refresh token if provided
         if refresh_token:
@@ -414,6 +418,6 @@ class AuthService:
                 refresh_exp = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
                 await add_token_to_blacklist(refresh_token, refresh_exp)
             except Exception as e:
-                print(f"Error blacklisting refresh token: {e}")
+                logger.error(f"Error blacklisting refresh token: {e}")
         
         return True

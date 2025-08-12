@@ -11,6 +11,10 @@ from apps.core.config import settings
 from apps.core.security import verify_token
 from apps.auth.models import User
 from apps.auth.utils import api_error_response
+import logging
+from apps.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
