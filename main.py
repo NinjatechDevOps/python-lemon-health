@@ -5,10 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-
 from apps.auth.routes import router as auth_router
 from apps.profile.routes import router as profile_router
 from apps.chat.routes import chat_router, document_router
+from apps.admin_panel.routes import admin_router
 from apps.core.config import settings
 from apps.core.logging_config import setup_logging
 
@@ -97,10 +97,6 @@ app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(profile_router, prefix="/api/profile", tags=["User Profile"])
 app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])
 app.include_router(document_router, prefix="/api/documents", tags=["Documents"])
-# app.include_router(role_router, prefix="/api/roles", tags=["Roles"])
-
-# Include Admin routes
-from apps.admin_panel.routes import admin_router
 app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 
 @app.get("/", tags=["Health Check"])
