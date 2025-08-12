@@ -1,3 +1,8 @@
+import logging
+from apps.core.logging_config import get_logger
+
+logger = get_logger(__name__)
+
 from datetime import date
 from typing import Optional, Generic, TypeVar
 
@@ -46,31 +51,31 @@ class ProfileBase(BaseModel):
 
     @model_validator(mode='after')
     def validate_height_with_unit(self):
-        print(f"DEBUG - Model validator called with data: {self.model_dump()}")
+        logger.debug(f"Model validator called with data: {self.model_dump()}")
         height = self.height
         height_unit = self.height_unit or 'cm'
         
         if height is not None:
-            print(f"DEBUG - Validating height={height} with unit={height_unit}")
+            logger.debug(f"Validating height={height} with unit={height_unit}")
             if height_unit == 'cm':
                 if height < 50 or height > 250:
-                    print(f"DEBUG - CM validation failed: {height} not in range [50, 250]")
+                    logger.error(f"CM validation failed: {height} not in range [50, 250]")
                     raise ValueError('Height must be between 50 and 250 cm')
                 else:
-                    print(f"DEBUG - CM validation passed: {height}")
+                    logger.debug(f"CM validation passed: {height}")
             elif height_unit == 'ft/in':
                 if height < 2 or height > 8:
-                    print(f"DEBUG - Feet validation failed: {height} not in range [2, 8]")
+                    logger.error(f"Feet validation failed: {height} not in range [2, 8]")
                     raise ValueError('Height must be between 2 and 8 feet')
                 else:
-                    print(f"DEBUG - Feet validation passed: {height}")
+                    logger.debug(f"Feet validation passed: {height}")
             else:
                 # Default to cm validation if no unit specified
                 if height < 50 or height > 250:
-                    print(f"DEBUG - Default CM validation failed: {height} not in range [50, 250]")
+                    logger.error(f"Default CM validation failed: {height} not in range [50, 250]")
                     raise ValueError('Height must be between 50 and 250 cm')
                 else:
-                    print(f"DEBUG - Default CM validation passed: {height}")
+                    logger.debug(f"Default CM validation passed: {height}")
         return self
 
     @validator('weight')

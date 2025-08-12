@@ -5,9 +5,9 @@ from typing import Dict, Any, List, Optional
 
 from apps.llm.factory import get_llm_provider
 from apps.auth.models import User
+from apps.core.logging_config import get_logger
 
-# Set up logger for LLM connector
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Get the LLM provider from environment variable or default to OpenAI
 LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "openai")

@@ -21,9 +21,9 @@ from apps.chat.utils import convert_file_path_to_complete_url
 import asyncio
 import math
 import json
+from apps.core.logging_config import get_logger
 
-# Set up logger for routes
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Create separate routers with different tags
 chat_router = APIRouter(tags=["Chat"])

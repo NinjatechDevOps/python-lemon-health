@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Optional
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +9,9 @@ from apps.core.db import get_db
 from apps.profile.schemas import ProfileResponse, BaseResponse
 from apps.profile.services import ProfileService
 from apps.profile.utils import api_response, api_error_response, convert_form_data_to_profile_update, convert_relative_to_complete_url
+from apps.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -90,8 +94,7 @@ async def update_profile(
         # Check for validation errors
         if error_message:
             return api_error_response(status_code=400, message=error_message)
-        
-        print(f"DEBUG - Profile data created: {profile_data.model_dump()}")
+        logger.debug(f"Profile data created: {profile_data.model_dump()}")
         
         # Get existing profile
         profile = await ProfileService.get_profile_by_user_id(db, current_user.id)
@@ -99,7 +102,7 @@ async def update_profile(
             # If profile doesn't exist, create it
             profile = await ProfileService.create_profile(db, profile_data, current_user.id)
             msg = "Profile created successfully"
-            print(f"DEBUG - Profile created: {profile.id}")
+            logger.info(f"Profile created: {profile.id}")
             if profile_picture:
                 success, message, updated_profile = await ProfileService.update_profile_picture(
                     db=db, file=profile_picture, user_id=current_user.id
@@ -118,13 +121,13 @@ async def update_profile(
                 profile_data.profile_picture_url = updated_profile.profile_picture_url
             profile = await ProfileService.update_profile(db, profile, profile_data)
             msg = "Profile updated successfully"
-            print(f"DEBUG - Profile updated: {profile.id}")
+            logger.info(f"Profile updated: {profile.id}")
         
         # Add name from user data
         try:
             response_data = ProfileResponse.model_validate(profile)
         except ValidationError as e:
-            print(f"DEBUG - Validation error: {e}")
+            logger.error(f"Validation error: {e}")
             return api_error_response(status_code=400, message=f"Invalid profile data: {e}")
         response_data.first_name = current_user.first_name
         response_data.last_name = current_user.last_name
@@ -132,7 +135,7 @@ async def update_profile(
         # Convert relative URL to complete URL
         response_data.profile_picture_url = convert_relative_to_complete_url(response_data.profile_picture_url)
         
-        print(f"DEBUG - Final response data: {response_data.model_dump()}")
+        logger.debug(f"Final response data: {response_data.model_dump()}")
         return api_response(
             success=True,
             message=msg,
@@ -140,10 +143,10 @@ async def update_profile(
         )
     except ValidationError as e:
         # Handle Pydantic validation errors with 400 status
-        print(f"DEBUG - Pydantic validation error: {e}")
+        logger.error(f"Pydantic validation error: {e}")
         return api_error_response(status_code=400, message=f"Validation error: {e}")
     except Exception as e:
-        print(f"DEBUG - Unexpected error in update_profile: {str(e)}")
+        logger.error(f"Unexpected error in update_profile: {str(e)}")
         return api_error_response(status_code=500, message=f"Internal server error: {str(e)}")
 
 

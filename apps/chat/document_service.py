@@ -19,9 +19,9 @@ from apps.chat.models import Document, DocumentAnalysis, DocumentType
 from apps.chat.llm_connector import process_query_with_prompt
 from apps.chat.prompts import DOCUMENT_ANALYSIS_PROMPT
 from apps.core.config import settings
+from apps.core.logging_config import get_logger
 
-# Set up logger for DocumentService
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class DocumentService:

@@ -23,9 +23,9 @@ from apps.chat.prompts import (
     DEFAULT_PROMPT_GUARDRAILS, DEFAULT_PROMPT_SYSTEM, QUERY_CLASSIFICATION_PROMPT, 
     DEFAULT_ALLOWED_PROMPT_TYPES, DEFAULT_PROMPT_TYPE, ENHANCED_QUERY_CLASSIFICATION_PROMPT
 )
+from apps.core.logging_config import get_logger
 
-# Set up logger for ChatService
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ChatService:

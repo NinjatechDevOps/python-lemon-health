@@ -1,3 +1,5 @@
+import logging
+from apps.core.logging_config import get_logger
 from apps.auth.models import User
 from apps.profile.models import Profile
 from datetime import datetime, timezone
@@ -7,6 +9,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from apps.core.base import Base
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
+
+logger = get_logger(__name__)
 
 class PromptType(str, Enum):
     BOOKING = "booking"

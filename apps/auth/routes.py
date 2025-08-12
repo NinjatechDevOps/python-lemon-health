@@ -19,6 +19,10 @@ from apps.auth.services import AuthService
 from apps.auth.twilio_service import twilio_service
 from apps.auth.deps import get_current_mobile_verified_user, get_current_user
 from apps.auth.utils import api_response, api_error_response
+import logging
+from apps.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 

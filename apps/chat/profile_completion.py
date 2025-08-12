@@ -13,9 +13,9 @@ from apps.chat.prompts import (
     PROFILE_FIELD_MAPPING,
     PROFILE_INFO_DETECTION_PROMPT
 )
+from apps.core.logging_config import get_logger
 
-# Set up logger for ProfileCompletionService
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ProfileCompletionService:
