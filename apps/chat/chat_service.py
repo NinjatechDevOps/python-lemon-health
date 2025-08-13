@@ -305,14 +305,16 @@ class ChatService:
         conversation_id: int, 
         user_id: int, 
         content: str, 
-        db: AsyncSession
+        db: AsyncSession,
+        is_out_of_scope: bool = False
     ) -> ChatMessage:
         """Store user message in database"""
         user_msg = ChatMessage(
             conversation_id=conversation_id,
             user_id=user_id,
             role=ChatRole.USER,
-            content=content
+            content=content,
+            is_out_of_scope=is_out_of_scope
         )
         db.add(user_msg)
         await db.commit()
@@ -351,14 +353,16 @@ class ChatService:
     async def store_assistant_message(
         conversation_id: int, 
         content: str, 
-        db: AsyncSession
+        db: AsyncSession,
+        is_out_of_scope: bool = False
     ) -> ChatMessage:
         """Store assistant message in database"""
         assistant_msg = ChatMessage(
             conversation_id=conversation_id,
             user_id=None,
             role=ChatRole.ASSISTANT,
-            content=content
+            content=content,
+            is_out_of_scope=is_out_of_scope
         )
         db.add(assistant_msg)
         await db.commit()
@@ -471,11 +475,12 @@ class ChatService:
                 temperature=0.3,
                 max_tokens=100
             )
-            # Store assistant message
+            # Store assistant message as out-of-scope
             await ChatService.store_assistant_message(
                 conversation_id=conversation.id,
                 content=denial_response,
-                db=db
+                db=db,
+                is_out_of_scope=True
             )
             return {
                 "success": True,
@@ -624,11 +629,12 @@ class ChatService:
                 temperature=0.3,
                 max_tokens=100
             )
-            # Store assistant message
+            # Store assistant message as out-of-scope
             await ChatService.store_assistant_message(
                 conversation_id=conversation.id,
                 content=denial_response,
-                db=db
+                db=db,
+                is_out_of_scope=True
             )
             async def denial_stream():
                 yield denial_response
@@ -776,7 +782,8 @@ class ChatService:
                 mid=m.mid,
                 role=m.role,
                 content=m.content,
-                created_at=str(m.created_at)
+                created_at=str(m.created_at),
+                is_out_of_scope=m.is_out_of_scope
             ) for m in messages
         ]
         

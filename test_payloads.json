@@ -1,0 +1,237 @@
+{
+  "test_payloads": [
+    {
+      "name": "1. Out-of-scope query (Geography)",
+      "description": "Should be denied by early guardrails and stored with is_out_of_scope=True",
+      "payload": {
+        "conv_id": "44db9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "Where is the Capital of India?",
+        "streamed": false
+      }
+    },
+    {
+      "name": "2. Out-of-scope query (Politics)",
+      "description": "Should be denied by early guardrails and stored with is_out_of_scope=True",
+      "payload": {
+        "conv_id": "44db9448-4b4d-4223-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "Who is the Prime Minister of India?",
+        "streamed": false
+      }
+    },
+    {
+      "name": "3. Out-of-scope query (Technology)",
+      "description": "Should be denied by early guardrails and stored with is_out_of_scope=True",
+      "payload": {
+        "conv_id": "44db9448-4b4d-4224-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "How do I build a rocket ship?",
+        "streamed": false
+      }
+    },
+    {
+      "name": "4. Out-of-scope query (Language Learning)",
+      "description": "Should be denied by early guardrails and stored with is_out_of_scope=True",
+      "payload": {
+        "conv_id": "44db9448-4b4d-4225-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "Can you teach me to speak Mandarin?",
+        "streamed": false
+      }
+    },
+    {
+      "name": "5. Out-of-scope query (Music)",
+      "description": "Should be denied by early guardrails and stored with is_out_of_scope=True",
+      "payload": {
+        "conv_id": "44db9448-4b4d-4226-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "I want to lose weight and also learn to play guitar",
+        "streamed": false
+      }
+    },
+    {
+      "name": "6. Valid nutrition query (no profile)",
+      "description": "Should trigger profile completion first",
+      "payload": {
+        "conv_id": "55db9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "Provide me my nutrition plan.",
+        "streamed": false
+      }
+    },
+    {
+      "name": "7. Profile completion response",
+      "description": "Should update profile and allow nutrition query",
+      "payload": {
+        "conv_id": "55db9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "Height 165, weight 55, Age 25 and Gender Male",
+        "streamed": false
+      }
+    },
+    {
+      "name": "8. Valid nutrition query (with profile)",
+      "description": "Should work after profile completion",
+      "payload": {
+        "conv_id": "55db9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "What should I eat for breakfast to stay healthy?",
+        "streamed": false
+      }
+    },
+    {
+      "name": "9. Valid nutrition query (specific prompt)",
+      "description": "Should work with nutrition prompt",
+      "payload": {
+        "conv_id": "66db9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "nutrition",
+        "user_query": "What are good sources of protein for vegetarians?",
+        "streamed": false
+      }
+    },
+    {
+      "name": "10. Valid nutrition query (vitamins)",
+      "description": "Should work with default prompt",
+      "payload": {
+        "conv_id": "77db9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "Tell me about vitamins and minerals",
+        "streamed": false
+      }
+    },
+    {
+      "name": "11. Valid exercise query (no profile)",
+      "description": "Should trigger profile completion first",
+      "payload": {
+        "conv_id": "88db9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "What exercises are good for weight loss?",
+        "streamed": false
+      }
+    },
+    {
+      "name": "12. Profile completion for exercise",
+      "description": "Should update profile and allow exercise query",
+      "payload": {
+        "conv_id": "88db9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "Height 170, weight 70, Age 30 and Gender Female",
+        "streamed": false
+      }
+    },
+    {
+      "name": "13. Valid exercise query (with profile)",
+      "description": "Should work after profile completion",
+      "payload": {
+        "conv_id": "88db9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "How much time we need to exercise according to my age?",
+        "streamed": false
+      }
+    },
+    {
+      "name": "14. Valid exercise query (specific prompt)",
+      "description": "Should work with exercise prompt",
+      "payload": {
+        "conv_id": "99db9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "exercise",
+        "user_query": "What exercises are good for building core strength?",
+        "streamed": false
+      }
+    },
+    {
+      "name": "15. Valid exercise query (workout routine)",
+      "description": "Should work with exercise prompt",
+      "payload": {
+        "conv_id": "aadb9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "exercise",
+        "user_query": "How can I start a workout routine?",
+        "streamed": false
+      }
+    },
+    {
+      "name": "16. Valid health query (stress management)",
+      "description": "Should work with default prompt",
+      "payload": {
+        "conv_id": "bbdb9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "I need help managing my stress levels",
+        "streamed": false
+      }
+    },
+    {
+      "name": "17. Valid health query (joint pain)",
+      "description": "Should work with default prompt",
+      "payload": {
+        "conv_id": "ccdb9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "My joints hurt when I exercise, what can I do and eat?",
+        "streamed": false
+      }
+    },
+    {
+      "name": "18. Valid health query (omega-3)",
+      "description": "Should work with nutrition prompt",
+      "payload": {
+        "conv_id": "dddb9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "nutrition",
+        "user_query": "What are the benefits of omega-3 fatty acids?",
+        "streamed": false
+      }
+    },
+    {
+      "name": "19. Valid health query (general wellness)",
+      "description": "Should work with default prompt",
+      "payload": {
+        "conv_id": "eedb9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "I want to be healthier but don't know where to start",
+        "streamed": false
+      }
+    },
+    {
+      "name": "20. Streaming test (valid query)",
+      "description": "Should work with streaming response",
+      "payload": {
+        "conv_id": "ffdb9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "What are the best foods for energy?",
+        "streamed": true
+      }
+    },
+    {
+      "name": "21. Streaming test (out-of-scope)",
+      "description": "Should be denied even with streaming",
+      "payload": {
+        "conv_id": "ggdb9448-4b4d-4222-80c8-8e3e585339f6",
+        "prompt_id": "",
+        "user_query": "What is the weather like today?",
+        "streamed": true
+      }
+    }
+  ],
+  "testing_instructions": {
+    "out_of_scope_tests": [
+      "Test payloads 1-5: These should be denied by early guardrails",
+      "Expected: HTTP 400 with denial message, messages stored with is_out_of_scope=True"
+    ],
+    "profile_completion_tests": [
+      "Test payloads 6-8: First query triggers profile completion",
+      "Test payloads 11-13: Exercise version of profile completion",
+      "Expected: First query asks for profile, second query updates profile, third query works normally"
+    ],
+    "valid_queries": [
+      "Test payloads 9-10, 14-19: These should work normally",
+      "Expected: Normal responses, messages stored with is_out_of_scope=False"
+    ],
+    "streaming_tests": [
+      "Test payloads 20-21: Test streaming functionality",
+      "Expected: Streaming responses work correctly"
+    ],
+    "uuid_consistency": [
+      "Profile completion uses same UUID: 55db9448-4b4d-4222-80c8-8e3e585339f6",
+      "Exercise profile uses same UUID: 88db9448-4b4d-4222-80c8-8e3e585339f6"
+    ]
+  }
+} 
