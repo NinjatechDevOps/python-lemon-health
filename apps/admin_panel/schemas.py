@@ -116,4 +116,32 @@ class AdminChatHistoryListResponse(BaseModel):
     per_page: int
     total_pages: int
     has_next: bool
+    has_prev: bool
+
+# Out-of-scope message management schemas
+class AdminOutOfScopeMessageResponse(BaseModel):
+    """Schema for out-of-scope chat message response"""
+    id: int
+    mid: str
+    conversation_id: int
+    role: str
+    content: str
+    created_at: str
+    user_id: Optional[int] = None
+    conv_id: Optional[str] = None
+    prompt_type: Optional[str] = None
+    title: Optional[str] = None
+
+class AdminUpdateOutOfScopeRequest(BaseModel):
+    """Schema for updating is_out_of_scope flag"""
+    is_out_of_scope: bool = Field(..., description="Whether the message is out of scope")
+
+class AdminOutOfScopeListResponse(BaseModel):
+    """Schema for out-of-scope messages list response"""
+    messages: List[AdminOutOfScopeMessageResponse]
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+    has_next: bool
     has_prev: bool 

@@ -34,7 +34,7 @@ class AdminService:
             user = result.scalar_one_or_none()
             
             if not user:
-                return False, {"message": "Invalid mobile number or password"}
+                return False, {"message": "You're not registered yet. Please sign up to continue."}
             
             # Check if user is admin
             if not user.is_admin:
@@ -46,7 +46,7 @@ class AdminService:
             
             # Verify password
             if not verify_password(password, user.hashed_password):
-                return False, {"message": "Invalid mobile number or password"}
+                return False, {"message": "Looks like you've entered an incorrect password. Please try again."}
             
             # Generate tokens
             access_token = create_access_token(
@@ -554,4 +554,167 @@ class AdminService:
             
         except Exception as e:
             logger.error(f"Error getting admin chat history detail: {e}")
-            return None 
+            return None
+
+    @staticmethod
+    async def get_out_of_scope_messages(
+        db: AsyncSession,
+        user_id: Optional[int] = None,
+        page: int = 1,
+        per_page: int = 20
+    ) -> List[Dict[str, Any]]:
+        """Return out-of-scope user messages, optionally filtered by conversation owner user_id, with user profile info."""
+        try:
+            offset = (page - 1) * per_page
+            from apps.profile.models import Profile
+            from apps.profile.utils import convert_relative_to_complete_url
+            query = (
+                select(
+                    ChatMessage.id,
+                    ChatMessage.mid,
+                    ChatMessage.conversation_id,
+                    ChatMessage.role,
+                    ChatMessage.content,
+                    ChatMessage.created_at,
+                    ChatMessage.user_id,
+                    ChatMessage.is_out_of_scope,
+                    Conversation.conv_id,
+                    Prompt.prompt_type,
+                    Conversation.title,
+                    User.first_name,
+                    User.last_name,
+                    Profile.profile_picture_url
+                )
+                .join(Conversation, ChatMessage.conversation_id == Conversation.id)
+                .join(Prompt, Conversation.prompt_id == Prompt.id)
+                .outerjoin(User, ChatMessage.user_id == User.id)
+                .outerjoin(Profile, User.id == Profile.user_id)
+                .where(ChatMessage.is_out_of_scope == True)
+                .where(ChatMessage.role == "user")
+            )
+            if user_id:
+                query = query.where(Conversation.user_id == user_id)
+            query = query.order_by(desc(ChatMessage.created_at)).offset(offset).limit(per_page)
+            result = await db.execute(query)
+            messages = result.all()
+            messages_list = []
+            for msg in messages:
+                messages_list.append({
+                    "id": msg.id,
+                    "mid": msg.mid,
+                    "conversation_id": msg.conversation_id,
+                    "role": msg.role.value if hasattr(msg.role, 'value') else str(msg.role),
+                    "content": msg.content,
+                    "created_at": msg.created_at.isoformat(),
+                    "user_id": msg.user_id,
+                    "conv_id": msg.conv_id,
+                    "prompt_type": msg.prompt_type.value if hasattr(msg.prompt_type, 'value') else str(msg.prompt_type),
+                    "title": msg.title,
+                    "first_name": msg.first_name,
+                    "last_name": msg.last_name,
+                    "profile_picture_url": convert_relative_to_complete_url(msg.profile_picture_url) if msg.profile_picture_url else None,
+                    "is_out_of_scope": msg.is_out_of_scope
+                })
+            return messages_list
+        except Exception as e:
+            logger.error(f"Error getting out-of-scope messages: {e}")
+            return []
+
+    @staticmethod
+    async def get_out_of_scope_messages_count(
+        db: AsyncSession,
+        user_id: Optional[int] = None
+    ) -> int:
+        """Get total count of out-of-scope user messages"""
+        try:
+            query = (
+                select(func.count(ChatMessage.id))
+                .join(Conversation, ChatMessage.conversation_id == Conversation.id)
+                .where(ChatMessage.is_out_of_scope == True)
+                .where(ChatMessage.role == "user")
+            )
+            if user_id:
+                query = query.where(Conversation.user_id == user_id)
+            result = await db.execute(query)
+            return result.scalar() or 0
+        except Exception as e:
+            logger.error(f"Error getting out-of-scope messages count: {e}")
+            return 0
+
+    @staticmethod
+    async def update_out_of_scope_flag(
+        db: AsyncSession,
+        mid: str,
+        is_out_of_scope: bool,
+        acting_user: User
+    ) -> Tuple[bool, Optional[Dict[str, Any]], str]:
+        """Update is_out_of_scope for a message by mid. Only admin or owner allowed."""
+        try:
+            # Find the message
+            result = await db.execute(
+                select(ChatMessage).where(ChatMessage.mid == mid)
+            )
+            message = result.scalar_one_or_none()
+            
+            if not message:
+                return False, None, "Message not found"
+            
+            # Get conversation to check ownership
+            conv_result = await db.execute(
+                select(Conversation).where(Conversation.id == message.conversation_id)
+            )
+            conversation = conv_result.scalar_one_or_none()
+            
+            if not conversation:
+                return False, None, "Conversation not found"
+            
+            # Check authorization: only admin or message owner can update
+            if not acting_user.is_admin and conversation.user_id != acting_user.id:
+                return False, None, "Access denied. Only admin or message owner can update this flag"
+            
+            # Update the flag
+            message.is_out_of_scope = is_out_of_scope
+            await db.commit()
+            await db.refresh(message)
+            
+            # Get updated message data with conversation info
+            updated_result = await db.execute(
+                select(
+                    ChatMessage.id,
+                    ChatMessage.mid,
+                    ChatMessage.conversation_id,
+                    ChatMessage.role,
+                    ChatMessage.content,
+                    ChatMessage.created_at,
+                    ChatMessage.user_id,
+                    ChatMessage.is_out_of_scope,
+                    Conversation.conv_id,
+                    Prompt.prompt_type,
+                    Conversation.title
+                )
+                .join(Conversation, ChatMessage.conversation_id == Conversation.id)
+                .join(Prompt, Conversation.prompt_id == Prompt.id)
+                .where(ChatMessage.mid == mid)
+            )
+            updated_msg = updated_result.first()
+            
+            if updated_msg:
+                return True, {
+                    "id": updated_msg.id,
+                    "mid": updated_msg.mid,
+                    "conversation_id": updated_msg.conversation_id,
+                    "role": updated_msg.role.value if hasattr(updated_msg.role, 'value') else str(updated_msg.role),
+                    "content": updated_msg.content,
+                    "created_at": updated_msg.created_at.isoformat(),
+                    "user_id": updated_msg.user_id,
+                    "is_out_of_scope": updated_msg.is_out_of_scope,
+                    "conv_id": updated_msg.conv_id,
+                    "prompt_type": updated_msg.prompt_type.value if hasattr(updated_msg.prompt_type, 'value') else str(updated_msg.prompt_type),
+                    "title": updated_msg.title
+                }, "Message updated successfully"
+            
+            return False, None, "Failed to retrieve updated message"
+            
+        except Exception as e:
+            logger.error(f"Error updating out-of-scope flag: {e}")
+            return False, None, f"Error updating message: {str(e)}" 

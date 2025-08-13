@@ -510,4 +510,141 @@ async def get_admin_chat_history_detail(
             "success": False,
             "message": f"Error retrieving chat history detail: {str(e)}",
             "data": None
+        }
+
+@admin_router.get("/chat-messages/out-of-scope")
+async def list_out_of_scope_messages(
+    user_id: Optional[int] = Query(None, description="Filter by conversation owner user ID"),
+    page: int = Query(1, ge=1, description="Page number (starts from 1)"),
+    per_page: int = Query(20, ge=1, le=100, description="Number of messages per page (max 100)"),
+    current_admin: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Get all out-of-scope chat messages with pagination.
+    
+    Returns messages where is_out_of_scope = True.
+    Optionally filter by user_id to see messages from specific users.
+    """
+    try:
+        # Get out-of-scope messages
+        messages = await AdminService.get_out_of_scope_messages(
+            db=db,
+            user_id=user_id,
+            page=page,
+            per_page=per_page
+        )
+        
+        # Get total count for pagination
+        total_count = await AdminService.get_out_of_scope_messages_count(
+            db=db,
+            user_id=user_id
+        )
+        
+        # Calculate pagination info
+        total_pages = (total_count + per_page - 1) // per_page
+        has_next = page < total_pages
+        has_prev = page > 1
+        
+        # Convert to response format
+        messages_response = []
+        for msg in messages:
+            messages_response.append({
+            "id": msg["id"],
+            "mid": msg["mid"],
+            "conversation_id": msg["conversation_id"],
+            "role": msg["role"],
+            "content": msg["content"],
+            "created_at": msg["created_at"],
+            "user_id": msg["user_id"],
+            "conv_id": msg["conv_id"],
+            "prompt_type": msg["prompt_type"],
+            "title": msg["title"],
+            "first_name": msg.get("first_name"),
+            "last_name": msg.get("last_name"),
+            "profile_picture_url": msg.get("profile_picture_url"),
+            "is_out_of_scope": msg["is_out_of_scope"]
+        })
+                
+        response_data = {
+            "messages": messages_response,
+            "total": total_count,
+            "page": page,
+            "per_page": per_page,
+            "total_pages": total_pages,
+            "has_next": has_next,
+            "has_prev": has_prev
+        }
+        
+        return {
+            "success": True,
+            "message": "Out-of-scope messages retrieved successfully",
+            "data": response_data
+        }
+        
+    except Exception as e:
+        logger.error(f"Error retrieving out-of-scope messages: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Error retrieving out-of-scope messages: {str(e)}",
+            "data": None
+        }
+
+@admin_router.patch("/chat-messages/{mid}/out-of-scope")
+async def update_out_of_scope_message(
+    mid: str,
+    req: Dict[str, Any],
+    current_user: User = Depends(get_current_admin_user),  
+    db: AsyncSession = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Update the is_out_of_scope flag for a specific message.
+    
+    Only the message owner or an admin can update this flag.
+    Requires valid mid and is_out_of_scope boolean in request body.
+    """
+    try:
+        # Validate request body
+        if "is_out_of_scope" not in req:
+            return {
+                "success": False,
+                "message": "Missing required field: is_out_of_scope",
+                "data": None
+            }
+        
+        is_out_of_scope = req["is_out_of_scope"]
+        if not isinstance(is_out_of_scope, bool):
+            return {
+                "success": False,
+                "message": "is_out_of_scope must be a boolean value",
+                "data": None
+            }
+        
+        # Update the flag
+        success, updated_message, message = await AdminService.update_out_of_scope_flag(
+            db=db,
+            mid=mid,
+            is_out_of_scope=is_out_of_scope,
+            acting_user=current_user
+        )
+        
+        if not success:
+            return {
+                "success": False,
+                "message": message,
+                "data": None
+            }
+        
+        return {
+            "success": True,
+            "message": message,
+            "data": updated_message
+        }
+        
+    except Exception as e:
+        logger.error(f"Error updating out-of-scope flag: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Error updating out-of-scope flag: {str(e)}",
+            "data": None
         } 

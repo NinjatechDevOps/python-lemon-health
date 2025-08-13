@@ -51,6 +51,7 @@ class ChatMessageResponse(BaseModel):
     role: ChatRole
     content: str
     created_at: str
+    is_out_of_scope: bool = False
 
 class ChatHistoryResponse(BaseModel):
     conv_id: str  # Changed from chat_id

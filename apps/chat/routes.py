@@ -94,6 +94,31 @@ async def chat(
                 max_tokens=100    # Short denial message
             )
             
+            # Create conversation and store messages with is_out_of_scope=True
+            try:
+                conversation, _ = await ChatService.create_default_conversation(
+                    conv_id=chat_request.conv_id,
+                    user_id=current_user.id,
+                    user_query=chat_request.user_query,
+                    db=db
+                )
+                # Store both messages as out-of-scope
+                await ChatService.store_user_message(
+                    conversation_id=conversation.id,
+                    user_id=current_user.id,
+                    content=chat_request.user_query,
+                    db=db,
+                    is_out_of_scope=True
+                )
+                await ChatService.store_assistant_message(
+                    conversation_id=conversation.id,
+                    content=denial_response,
+                    db=db,
+                    is_out_of_scope=True
+                )
+            except Exception as persist_error:
+                logger.error(f"Failed to persist out-of-scope messages: {persist_error}")
+            
             return {
                 "success": True,
                 "message": "Query not related to Nutrition or Exercise",
@@ -105,6 +130,7 @@ async def chat(
                     streamed=False
                 )
             }
+            
         raise
     except Exception as e:
         logger.error(f"An error occurred while processing your request: {e}")
