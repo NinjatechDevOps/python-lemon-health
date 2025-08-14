@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional, Tuple
 from apps.core.config import settings
 from apps.core.logging_config import get_logger
+from pydantic import ValidationError
 
 logger = get_logger(__name__)
 
@@ -92,9 +93,37 @@ def convert_form_data_to_profile_update(
     # Return error if any validation failed
     if errors:
         error_message = "; ".join(errors)
-        return ProfileUpdate(**converted_data), error_message
+        # Commented out: This was creating ProfileUpdate even with errors
+        # return ProfileUpdate(**converted_data), error_message
+        
+        # Updated: Return None for profile_data when there are conversion errors
+        return None, error_message
     
-    return ProfileUpdate(**converted_data), None 
+    # Updated: Wrap ProfileUpdate creation in try-catch to handle validation errors
+    try:
+        profile_update = ProfileUpdate(**converted_data)
+        return profile_update, None
+    except ValidationError as e:
+        logger.error(f"ProfileUpdate validation failed: {e}")
+        # Commented out: Full validation error with technical details
+        # return None, str(e)
+        
+        # Updated: Extract only the meaningful error message
+        # Get the first error's message from the validation errors
+        first_error = e.errors()[0]
+        if 'ctx' in first_error and 'error' in first_error['ctx']:
+            # For custom validators that use ValueError
+            error_msg = str(first_error['ctx']['error'])
+            # Remove "ValueError: " prefix if present
+            if error_msg.startswith("ValueError: "):
+                error_msg = error_msg.replace("ValueError: ", "")
+            return None, error_msg
+        elif 'msg' in first_error:
+            # For standard Pydantic errors
+            return None, first_error['msg']
+        else:
+            # Fallback to simple error message
+            return None, "Validation error: Please check your input values" 
 
 
 
