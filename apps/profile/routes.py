@@ -92,7 +92,7 @@ async def update_profile(
         )
         
         # Check for validation errors
-        if error_message:
+        if error_message or profile_data is None:
             return api_error_response(status_code=400, message=error_message)
         logger.debug(f"Profile data created: {profile_data.model_dump()}")
         
