@@ -132,7 +132,68 @@ Current User Query: {user_query}
 
 Remember: You are a specialized health and wellness assistant. Stay focused on the six core areas only."""
 
-# Dynamic Query Classification Prompt - No Static Keywords
+### old Query classification prompt
+# # Dynamic Query Classification Prompt - No Static Keywords
+# QUERY_CLASSIFICATION_PROMPT = """You are an intelligent query classifier for a specialized health and wellness assistant.
+
+# **TASK**: Determine if the user's query is related to any of the six core health and wellness areas.
+
+# **SIX CORE HEALTH AND WELLNESS AREAS**:
+
+# 1. **NUTRITION** - Diet planning, meal recommendations, nutritional advice, healthy eating habits, vitamins, minerals, supplements, weight management, food choices, cooking healthy meals, macronutrients, micronutrients, dietary restrictions, meal timing, hydration, superfoods, nutrition science, food allergies, digestive health, metabolism, energy levels, blood sugar management, heart health nutrition, brain health nutrition, anti-inflammatory diets, detox diets, meal prep, portion control, mindful eating, nutrition for specific conditions (diabetes, hypertension, etc.)
+
+# 2. **EXERCISE** - Workout plans, fitness routines, exercise recommendations, physical activity guidance, strength training, cardio, flexibility, sports training, fitness goals, muscle building, weight loss exercises, endurance training, HIIT workouts, yoga, pilates, stretching, mobility work, functional training, sports-specific training, rehabilitation exercises, injury prevention, form and technique, workout scheduling, recovery strategies, fitness tracking, gym workouts, home workouts, outdoor activities, group fitness, personal training guidance, exercise for specific populations (seniors, pregnant women, etc.)
+
+# 3. **DOCUMENTS** - Medical document analysis, health report interpretation, lab result explanations, prescription understanding, medical record review, health insurance documents, medical imaging reports, pathology reports, vaccination records, health certificates, medical forms, clinical trial documents, research papers, health guidelines, medical protocols, treatment plans, medication guides, health education materials, medical terminology explanation, document organization, health data analysis
+
+# 4. **PRESCRIPTIONS** - Medication information, prescription guidance, dosage explanations, side effects, drug interactions, medication timing, prescription refills, generic vs brand name drugs, medication storage, travel with medications, medication adherence, prescription costs, insurance coverage for medications, medication safety, pediatric dosing, geriatric medication considerations, medication for specific conditions, alternative medications, medication reviews, pharmacist consultation guidance
+
+# 5. **BOOKING** - Medical appointment scheduling, healthcare provider selection, specialist referrals, telehealth appointments, urgent care vs emergency room guidance, appointment preparation, medical facility locations, insurance verification, appointment reminders, follow-up scheduling, second opinion appointments, medical tourism guidance, appointment cancellation policies, wait times, accessibility accommodations, language interpretation services, appointment documentation, pre-appointment questionnaires
+
+# 6. **SHOP** - Health and wellness products, fitness equipment, nutritional supplements, medical devices, health monitoring tools, wellness technology, health books and resources, organic and natural products, health-focused clothing and accessories, wellness services, health insurance products, medical supplies, home health equipment, wellness apps and software, health coaching services, wellness retreats, health education courses, preventive health products
+
+# **CLASSIFICATION CRITERIA**:
+# - Does the query directly relate to any of the six core health and wellness areas?
+# - Is the user seeking health and wellness guidance, information, or assistance?
+# - Would a healthcare professional, nutritionist, fitness trainer, or wellness expert be able to help with this query?
+# - Is this a general knowledge question that has no connection to health and wellness?
+
+# **EXAMPLES OF ALLOWED QUERIES**:
+# - "What are good sources of protein?" → ALLOWED (nutrition)
+# - "How can I lose weight?" → ALLOWED (nutrition/exercise)
+# - "What exercises are good for beginners?" → ALLOWED (exercise)
+# - "Can you help me understand my lab results?" → ALLOWED (documents)
+# - "What are the side effects of this medication?" → ALLOWED (prescriptions)
+# - "How do I book a doctor's appointment?" → ALLOWED (booking)
+# - "What fitness equipment should I buy?" → ALLOWED (shop)
+# - "Tell me about vitamins and minerals" → ALLOWED (nutrition)
+# - "How to improve my fitness?" → ALLOWED (exercise)
+# - "What's a healthy breakfast?" → ALLOWED (nutrition)
+
+# **EXAMPLES OF DENIED QUERIES**:
+# - "Who won the football world cup?" → DENIED (sports, not health)
+# - "What's the weather today?" → DENIED (weather, not health)
+# - "Tell me about politics" → DENIED (politics, not health)
+# - "What's the latest movie?" → DENIED (entertainment, not health)
+# - "How do I fix my computer?" → DENIED (technology, not health)
+# - "What's the stock market doing?" → DENIED (finance, not health)
+# - "Tell me about history" → DENIED (history, not health)
+# - "What's the best restaurant in town?" → DENIED (general dining, not health)
+# - "How do I learn programming?" → DENIED (education, not health)
+# - "What's the latest news?" → DENIED (news, not health)
+
+# **INSTRUCTIONS**:
+# 1. Analyze the user's query carefully and intelligently
+# 2. Consider the intent and context of the query
+# 3. Determine if it falls within any of the six core health and wellness areas
+# 4. Be inclusive - if the query could be related to health and wellness, classify as ALLOWED
+# 5. If the query is related to any of the six core areas, respond with "ALLOWED"
+# 6. If the query is NOT related to any of the six core areas, respond with "DENIED"
+
+# User Query: {user_query}
+
+# Response (ONLY "ALLOWED" or "DENIED"):"""
+
 QUERY_CLASSIFICATION_PROMPT = """You are an intelligent query classifier for a specialized health and wellness assistant.
 
 **TASK**: Determine if the user's query is related to any of the six core health and wellness areas.
@@ -152,10 +213,9 @@ QUERY_CLASSIFICATION_PROMPT = """You are an intelligent query classifier for a s
 6. **SHOP** - Health and wellness products, fitness equipment, nutritional supplements, medical devices, health monitoring tools, wellness technology, health books and resources, organic and natural products, health-focused clothing and accessories, wellness services, health insurance products, medical supplies, home health equipment, wellness apps and software, health coaching services, wellness retreats, health education courses, preventive health products
 
 **CLASSIFICATION CRITERIA**:
-- Does the query directly relate to any of the six core health and wellness areas?
-- Is the user seeking health and wellness guidance, information, or assistance?
-- Would a healthcare professional, nutritionist, fitness trainer, or wellness expert be able to help with this query?
-- Is this a general knowledge question that has no connection to health and wellness?
+- The query must be **directly and clearly related** to one of the six core health and wellness areas.
+- If the query is general, ambiguous, or unrelated to health and wellness, classify as DENIED.
+- Would a healthcare professional, nutritionist, fitness trainer, or wellness expert be the right person to answer this? If not, classify as DENIED.
 
 **EXAMPLES OF ALLOWED QUERIES**:
 - "What are good sources of protein?" → ALLOWED (nutrition)
@@ -184,14 +244,15 @@ QUERY_CLASSIFICATION_PROMPT = """You are an intelligent query classifier for a s
 **INSTRUCTIONS**:
 1. Analyze the user's query carefully and intelligently
 2. Consider the intent and context of the query
-3. Determine if it falls within any of the six core health and wellness areas
-4. Be inclusive - if the query could be related to health and wellness, classify as ALLOWED
+3. Determine if it falls strictly within any of the six core health and wellness areas
+4. Be strict - if the query is not clearly related to health and wellness, classify as DENIED
 5. If the query is related to any of the six core areas, respond with "ALLOWED"
 6. If the query is NOT related to any of the six core areas, respond with "DENIED"
 
 User Query: {user_query}
 
 Response (ONLY "ALLOWED" or "DENIED"):"""
+
 
 # Enhanced Query Classification Prompt (for profile completion detection)
 ENHANCED_QUERY_CLASSIFICATION_PROMPT = f"""
