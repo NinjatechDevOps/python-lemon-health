@@ -94,21 +94,34 @@ async def process_query_with_prompt(
         for attempt in range(max_retries):
             try:
                 # Use thread pool executor to run synchronous LLM call
-                loop = asyncio.get_event_loop()
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = loop.run_in_executor(
-                        executor,
-                        functools.partial(
-                            llm_provider.chat,
-                            messages=messages,
-                            **kwargs
-                        )
+                # loop = asyncio.get_event_loop()
+                # with concurrent.futures.ThreadPoolExecutor() as executor:
+                #     future = loop.run_in_executor(
+                #         executor,
+                #         functools.partial(
+                #             llm_provider.chat,
+                #             messages=messages,
+                #             **kwargs
+                #         )
+                #     )
+                    
+                #     # Wait for response with timeout
+                #     response = await asyncio.wait_for(future, timeout=30.0)
+                #     return response
+                if asyncio.iscoroutinefunction(llm_provider.chat):
+                    # async provider → just await it
+                    response = await asyncio.wait_for(
+                        llm_provider.chat(messages=messages, **kwargs),
+                        timeout=30.0
                     )
-                    
-                    # Wait for response with timeout
-                    response = await asyncio.wait_for(future, timeout=30.0)
-                    return response
-                    
+                else:
+                    # sync provider → run in a thread
+                    response = await asyncio.wait_for(
+                        asyncio.to_thread(llm_provider.chat, messages=messages, **kwargs),
+                        timeout=30.0
+                    )
+
+                return response
             except asyncio.TimeoutError:
                 logger.warning(f"LLM request timed out on attempt {attempt + 1}/{max_retries}")
                 if attempt < max_retries - 1:
@@ -126,7 +139,38 @@ async def process_query_with_prompt(
                 else:
                     logger.error("LLM request failed after all retries")
                     raise e
-                    
+        # for attempt in range(max_retries):
+        #     try:
+        #         if asyncio.iscoroutinefunction(llm_provider.chat):
+        #             # async provider
+        #             response = await asyncio.wait_for(
+        #                 llm_provider.chat(messages=messages, **kwargs),
+        #                 timeout=30.0
+        #             )
+        #         else:
+        #             # sync provider
+        #             response = await asyncio.wait_for(
+        #                 asyncio.to_thread(llm_provider.chat, messages=messages, **kwargs),
+        #                 timeout=30.0
+        #             )
+        #         return response
+
+        #     except asyncio.TimeoutError:
+        #         logger.warning(f"LLM request timed out on attempt {attempt+1}/{max_retries}")
+        #         if attempt < max_retries - 1:
+        #             await asyncio.sleep(retry_delay)
+        #             retry_delay *= 2
+        #         else:
+        #             raise Exception("LLM request timed out after multiple attempts")
+
+        #     except Exception as e:
+        #         logger.error(f"LLM request failed on attempt {attempt+1}/{max_retries}: {e}")
+        #         if attempt < max_retries - 1:
+        #             await asyncio.sleep(retry_delay)
+        #             retry_delay *= 2
+        #         else:
+        #             raise e
+
     except Exception as e:
         logger.error(f"Error in process_query_with_prompt: {e}")
         raise e 

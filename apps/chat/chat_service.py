@@ -267,7 +267,8 @@ class ChatService:
                 )
                 # Store the custom system prompt for later use
                 conversation._custom_system_prompt = system_prompt
-                return conversation, conversation.prompt
+                prompt = conversation._custom_system_prompt
+                return conversation, prompt
             
             # Find prompt by prompt_type
             prompt_result = await db.execute(
