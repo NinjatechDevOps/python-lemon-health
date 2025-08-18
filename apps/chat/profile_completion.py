@@ -581,7 +581,7 @@ class ProfileCompletionService:
         conversation_history: List[Dict[str, str]],
         user,
         prompt_type: str = None
-    ) -> Tuple[str, bool, bool]:
+    ) -> Tuple[str, bool, bool, str]:
         """
         Process user message with profile completion if needed
         
@@ -594,7 +594,7 @@ class ProfileCompletionService:
             prompt_type: Type of prompt (nutrition, exercise, etc.)
             
         Returns:
-            Tuple[str, bool, bool]: (response_message, should_continue_with_llm, profile_was_updated)
+            Tuple[str, bool, bool, str]: (response_message, should_continue_with_llm, profile_was_updated, original_query_to_process)
         """
         logger.info(f"Processing profile completion for user {user_id}")
         logger.info(f"User message: {user_message}")
@@ -618,6 +618,20 @@ class ProfileCompletionService:
         
         logger.info(f"User message contains profile info (dynamic detection): {has_profile_info}")
         logger.info(f"Message: {user_message}")
+        
+        # Check if there was a previous query that needs to be addressed after profile completion
+        original_query = None
+        if has_profile_info and conversation_history:
+            # Look for a recent message that was asking for something that required profile
+            for msg in reversed(conversation_history[-4:]):  # Check last 4 messages
+                if msg.get('role') == 'assistant' and any(field in msg.get('content', '').lower() for field in ['age', 'height', 'weight', 'gender', 'profile']):
+                    # Found a message asking for profile info, get the user's original query before that
+                    for original_msg in reversed(conversation_history[:-1]):
+                        if original_msg.get('role') == 'user' and not ProfileCompletionService.detect_profile_info_statically(original_msg.get('content', '')):
+                            original_query = original_msg.get('content')
+                            logger.info(f"Found original query to process after profile completion: {original_query}")
+                            break
+                    break
         
         if has_profile_info:
             # User is providing profile info, try to extract and update
@@ -648,8 +662,26 @@ class ProfileCompletionService:
                 if success:
                     logger.info("Profile updated successfully")
                     updated_fields = list(extracted_data.keys())
-                    # return f"I've updated your profile with the information you provided: {', '.join(updated_fields)}. Now let me help you with your request.", True, True
-                    return f"I've updated your profile with the information you provided.", True, True
+                    
+                    # Check if profile is now complete after the update
+                    is_now_complete, remaining_fields = await ProfileCompletionService.check_profile_completeness_for_query(
+                        db, user_id, original_query or user_message, prompt_type
+                    )
+                    
+                    if is_now_complete and original_query:
+                        # Profile is now complete and we have an original query to process
+                        confirmation = "I've updated your profile with the information you provided. Now let me help you with your original request."
+                        return confirmation, True, True, original_query
+                    elif is_now_complete:
+                        # Profile is complete but no specific query to process
+                        return "I've updated your profile with the information you provided.", True, True, None
+                    else:
+                        # Profile still incomplete, ask for remaining fields
+                        logger.info(f"Profile still incomplete after update. Remaining fields: {remaining_fields}")
+                        profile_message = await ProfileCompletionService.generate_profile_completion_message(
+                            original_query or user_message, remaining_fields, conversation_history, user
+                        )
+                        return profile_message, False, False, None
                 else:
                     logger.error("Failed to update profile")
             else:
@@ -661,12 +693,12 @@ class ProfileCompletionService:
                 profile_message = await ProfileCompletionService.generate_profile_completion_message(
                     user_message, missing_fields, conversation_history, user
                 )
-                return profile_message, False, False
+                return profile_message, False, False, None
         
         # If profile is complete and no profile info provided, proceed with normal chat
         if is_complete:
             logger.info("Profile is complete, proceeding with normal chat")
-            return None, True, False
+            return None, True, False, None
         
         # Profile is incomplete and user is not providing profile info, generate LLM message asking for missing fields
         logger.info("User not providing profile info, generating profile completion message")
@@ -675,7 +707,7 @@ class ProfileCompletionService:
             user_message, missing_fields, conversation_history, user
         )
         logger.debug(f"Generated profile completion message: {profile_message}")
-        return profile_message, False, False 
+        return profile_message, False, False, None 
 
     @staticmethod
     async def detect_profile_info_dynamically(user_message: str, conversation_history: List[Dict[str, str]], user) -> bool:

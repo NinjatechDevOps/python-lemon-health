@@ -54,8 +54,9 @@ Guidelines:
 4. Mention that this will help create a better, personalized response
 5. Keep the response conversational and helpful
 6. Tailor your request based on what the user is asking for
+7. Acknowledge their original request and assure them you'll help once you have the profile information
 
-Respond as if you're having a natural conversation with the user."""
+Respond as if you're having a natural conversation with the user. Make it clear that you'll address their original request once you have the needed information."""
 
 # Field mapping for profile completion messages
 PROFILE_FIELD_MAPPING = {

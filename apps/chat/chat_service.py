@@ -403,7 +403,7 @@ class ChatService:
 
         # CRITICAL FIX: Check profile completion FIRST, before guardrails
         # This ensures profile information is processed before being rejected by guardrails
-        profile_response, should_continue_with_llm, profile_updated = await ProfileCompletionService.process_with_profile_completion(
+        profile_response, should_continue_with_llm, profile_updated, original_query = await ProfileCompletionService.process_with_profile_completion(
             db=db,
             user_id=current_user.id,
             user_message=chat_request.user_query,
@@ -432,8 +432,20 @@ class ChatService:
                 )
             }
 
-        # If profile was updated, return a confirmation and do NOT apply guardrails to this message
-        if profile_updated:
+        # If profile was updated and we have an original query to process, continue with it
+        if profile_updated and original_query:
+            # Store the profile update confirmation
+            confirmation = profile_response or "I've updated your profile with the information you provided. Now let me help you with your original request."
+            await ChatService.store_assistant_message(
+                conversation_id=conversation.id,
+                content=confirmation,
+                db=db
+            )
+            # Update the user_query to process the original query
+            chat_request.user_query = original_query
+            # Continue processing with the original query
+        elif profile_updated:
+            # Profile was updated but no original query to process
             confirmation = profile_response or "Your profile has been updated. Now you can ask your nutrition question!"
             await ChatService.store_assistant_message(
                 conversation_id=conversation.id,
