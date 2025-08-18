@@ -648,7 +648,8 @@ class ProfileCompletionService:
                 if success:
                     logger.info("Profile updated successfully")
                     updated_fields = list(extracted_data.keys())
-                    return f"I've updated your profile with the information you provided: {', '.join(updated_fields)}. Now let me help you with your request.", True, True
+                    # return f"I've updated your profile with the information you provided: {', '.join(updated_fields)}. Now let me help you with your request.", True, True
+                    return f"I've updated your profile with the information you provided.", True, True
                 else:
                     logger.error("Failed to update profile")
             else:
