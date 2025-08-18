@@ -259,15 +259,49 @@ Response (ONLY "ALLOWED" or "DENIED"):"""
 ENHANCED_QUERY_CLASSIFICATION_PROMPT = f"""
 {QUERY_CLASSIFICATION_PROMPT}
 
-IMPORTANT: If the user is providing personal information (age, height, weight, gender) in response to a profile completion request, classify this as ALLOWED even if it doesn't directly relate to health topics.
+IMPORTANT: If the user is providing personal information (age, height, weight, gender), classify this as ALLOWED regardless of context. Users should always be able to update their profile information.
 
-Examples of profile completion queries that should be ALLOWED:
+Examples of profile updates that should ALWAYS be ALLOWED:
 - "My age is 25 years"
 - "I am 30 years old"
 - "Height 165, weight 55, age 25 and gender male"
 - "I'm female, 28 years old"
 - "My weight is 70 kg"
-
+- "My weight is 70"
+- "My height is 5.2"
+- "I weigh 76 kg"
+- "I'm 5 feet 2 inches tall"
+- "Update my weight to 80kg"
+- "My new weight is 75"
+- "My age is 25 years"
+- "I am 30"
+- "25 years old"
+- "Update my age to 22"
+- "Change my age to 27"
+- "My height is 5.2"
+- "Height 165 cm" 
+- "I'm 170 cm tall"
+- "Update my height to 6 feet"
+- "Change height to 5’8"
+- "My new height is 175 cm"
+- "My weight is 70 kg"
+- "I weigh 76"
+- "Update my weight to 80kg"
+- "My new weight is 75"
+- "Change weight to 90"
+- "I’m 72 kg now"
+- "Currently my weight is 68"
+- "Gender male"
+- "I am female"
+- "My gender is male"
+- "Change my gender to female"
+- "I’m a woman"
+- "I’m a man"
+- "Update gender to male"
+- "Height 165, weight 55, age 25 and gender male",
+- "I’m 30, female, height 5’4, weight 60"
+- "Update my profile: age 22, weight 70kg, height 170cm"
+- "Change weight to 68, height 172, age 26"
 User Query: {{user_query}}
 
 Recent conversation context:
