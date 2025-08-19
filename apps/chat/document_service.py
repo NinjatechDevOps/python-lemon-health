@@ -297,7 +297,7 @@ class DocumentService:
             # Search in original filename and LLM-generated filename only
             from sqlalchemy import or_
             search_filter = or_(
-                Document.original_filename.ilike(f"%{search}%"),
+                ## removed the search # Document.original_filename.ilike(f"%{search}%"),
                 Document.llm_generated_filename.ilike(f"%{search}%")
             )
             base_query = base_query.where(search_filter)
