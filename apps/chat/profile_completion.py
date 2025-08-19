@@ -697,7 +697,7 @@ class ProfileCompletionService:
                     elif is_now_complete:
                         # Profile is complete but no specific query to process
                         # Still return True to continue with LLM to provide a helpful response
-                        return "Your profile has been updated successfully. How can I help you today?", True, True, None
+                        return "Your profile has been updated successfully.", True, True, None
                     else:
                         # Profile still incomplete, ask for remaining fields
                         logger.info(f"Profile still incomplete after update. Remaining fields: {remaining_fields}")

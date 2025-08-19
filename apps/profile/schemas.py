@@ -51,31 +51,31 @@ class ProfileBase(BaseModel):
 
     @model_validator(mode='after')
     def validate_height_with_unit(self):
-        logger.debug(f"Model validator called with data: {self.model_dump()}")
-        height = self.height
-        height_unit = self.height_unit or 'cm'
+        # logger.debug(f"Model validator called with data: {self.model_dump()}")
+        # height = self.height
+        # height_unit = self.height_unit or 'cm'
         
-        if height is not None:
-            logger.debug(f"Validating height={height} with unit={height_unit}")
-            if height_unit == 'cm':
-                if height < 50 or height > 250:
-                    logger.error(f"CM validation failed: {height} not in range [50, 250]")
-                    raise ValueError('Height must be between 50 and 250 cm')
-                else:
-                    logger.debug(f"CM validation passed: {height}")
-            elif height_unit == 'ft/in':
-                if height < 2 or height > 8:
-                    logger.error(f"Feet validation failed: {height} not in range [2, 8]")
-                    raise ValueError('Height must be between 2 and 8 feet')
-                else:
-                    logger.debug(f"Feet validation passed: {height}")
-            else:
-                # Default to cm validation if no unit specified
-                if height < 50 or height > 250:
-                    logger.error(f"Default CM validation failed: {height} not in range [50, 250]")
-                    raise ValueError('Height must be between 50 and 250 cm')
-                else:
-                    logger.debug(f"Default CM validation passed: {height}")
+        # if height is not None:
+        #     logger.debug(f"Validating height={height} with unit={height_unit}")
+        #     if height_unit == 'cm':
+        #         if height < 50 or height > 250:
+        #             logger.error(f"CM validation failed: {height} not in range [50, 250]")
+        #             raise ValueError('Height must be between 50 and 250 cm')
+        #         else:
+        #             logger.debug(f"CM validation passed: {height}")
+        #     elif height_unit == 'ft/in':
+        #         if height < 2 or height > 8:
+        #             logger.error(f"Feet validation failed: {height} not in range [2, 8]")
+        #             raise ValueError('Height must be between 2 and 8 feet')
+        #         else:
+        #             logger.debug(f"Feet validation passed: {height}")
+        #     else:
+        #         # Default to cm validation if no unit specified
+        #         if height < 50 or height > 250:
+        #             logger.error(f"Default CM validation failed: {height} not in range [50, 250]")
+        #             raise ValueError('Height must be between 50 and 250 cm')
+        #         else:
+        #             logger.debug(f"Default CM validation passed: {height}")
         return self
 
     @validator('weight')

@@ -12,20 +12,47 @@ from apps.chat.models import PromptType
 logger = get_logger(__name__)
 
 # Profile Completion Prompts
+# PROFILE_EXTRACTION_PROMPT = """You are a profile completion assistant. Extract the following missing profile information from the user's message: {missing_fields}.
+
+# IMPORTANT: Only extract information that is EXPLICITLY provided by the user. Do NOT generate or assume any values.
+
+# Extraction rules:
+# - date_of_birth: Extract as YYYY-MM-DD format ONLY if user mentions their age. If only age is mentioned, calculate birth year as (current year - age). Current year is {current_year}.
+# - height: Extract as number ONLY if user explicitly mentions their height with units (cm or ft). Must be reasonable (100-250 cm or 3-8 ft)
+# - height_unit: Extract as 'cm' or 'ft' based on the unit mentioned by user
+# - weight: Extract as number ONLY if user explicitly mentions their weight with units (kg). Must be reasonable (20-300 kg)
+# - weight_unit: Extract as 'kg' only if user mentions kg
+# - gender: Extract as 'male', 'female', or 'other' ONLY if user explicitly states their gender
+
+# VALIDATION RULES:
+# - height: Must be between 100-250 cm or 3-8 ft
+# - weight: Must be between 20-300 kg
+# - If values are outside reasonable ranges, set to null
+# - If user mentions "I weigh 1 kg" or similar unrealistic values, set weight to null
+
+# CRITICAL: If the user does not provide a specific piece of information, set that field to null. Do NOT generate fake data.
+
+# IMPORTANT: Only extract information that is EXPLICITLY stated by the user. If the user says "I want to lose weight" but doesn't mention their actual weight, do NOT extract weight information.
+
+# Return ONLY a valid JSON object with the extracted fields. Do not include any other text before or after the JSON.
+
+# Example response:
+# {{"date_of_birth": "1990-05-15", "height": 175, "height_unit": "cm", "weight": 70, "weight_unit": "kg", "gender": "male"}}
+
+# If no information is provided, return: {{}}"""
 PROFILE_EXTRACTION_PROMPT = """You are a profile completion assistant. Extract the following missing profile information from the user's message: {missing_fields}.
 
 IMPORTANT: Only extract information that is EXPLICITLY provided by the user. Do NOT generate or assume any values.
 
 Extraction rules:
 - date_of_birth: Extract as YYYY-MM-DD format ONLY if user mentions their age. If only age is mentioned, calculate birth year as (current year - age). Current year is {current_year}.
-- height: Extract as number ONLY if user explicitly mentions their height with units (cm or ft). Must be reasonable (100-250 cm or 3-8 ft)
+- height: Extract as number ONLY if user explicitly mentions their height with units (cm or ft).
 - height_unit: Extract as 'cm' or 'ft' based on the unit mentioned by user
 - weight: Extract as number ONLY if user explicitly mentions their weight with units (kg). Must be reasonable (20-300 kg)
 - weight_unit: Extract as 'kg' only if user mentions kg
 - gender: Extract as 'male', 'female', or 'other' ONLY if user explicitly states their gender
 
 VALIDATION RULES:
-- height: Must be between 100-250 cm or 3-8 ft
 - weight: Must be between 20-300 kg
 - If values are outside reasonable ranges, set to null
 - If user mentions "I weigh 1 kg" or similar unrealistic values, set weight to null
@@ -40,6 +67,7 @@ Example response:
 {{"date_of_birth": "1990-05-15", "height": 175, "height_unit": "cm", "weight": 70, "weight_unit": "kg", "gender": "male"}}
 
 If no information is provided, return: {{}}"""
+
 
 PROFILE_COMPLETION_MESSAGE_PROMPT = """You are a helpful health and nutrition assistant. The user has requested: "{user_message}"
 
