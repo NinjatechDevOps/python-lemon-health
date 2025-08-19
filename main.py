@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.exceptions import RequestValidationError
 from apps.auth.routes import router as auth_router
 from apps.profile.routes import router as profile_router
@@ -111,6 +111,27 @@ async def health_check():
             "version": "0.1.0"
         }
     }
+
+# Updated: Adding direct routes for privacy policy and terms & conditions
+@app.get("/privacy-policy", response_class=HTMLResponse, tags=["Legal"])
+async def privacy_policy():
+    """Serve the privacy policy HTML page"""
+    try:
+        with open(os.path.join(settings.STATIC_ROOT, "legal", "privacy-policy.html"), "r") as f:
+            content = f.read()
+        return HTMLResponse(content=content)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Privacy policy not found")
+
+@app.get("/terms-conditions", response_class=HTMLResponse, tags=["Legal"])
+async def terms_conditions():
+    """Serve the terms & conditions HTML page"""
+    try:
+        with open(os.path.join(settings.STATIC_ROOT, "legal", "terms-conditions.html"), "r") as f:
+            content = f.read()
+        return HTMLResponse(content=content)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Terms & conditions not found")
 
 if __name__ == "__main__":
     import uvicorn
