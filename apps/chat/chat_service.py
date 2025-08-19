@@ -434,35 +434,27 @@ class ChatService:
 
         # If profile was updated and we have an original query to process, continue with it
         if profile_updated and original_query:
-            # Store the profile update confirmation
-            confirmation = profile_response or "I've updated your profile with the information you provided. Now let me help you with your original request."
-            await ChatService.store_assistant_message(
-                conversation_id=conversation.id,
-                content=confirmation,
-                db=db
-            )
+            # Don't store confirmation separately - we'll include it in the final response
             # Update the user_query to process the original query
-            chat_request.user_query = original_query
-            # Continue processing with the original query
+            # confirmation = profile_response or "I've updated your profile with the information you provided. Now let me help you with your original request."
+            # await ChatService.store_assistant_message(
+            #     conversation_id=conversation.id,
+            #     content=confirmation,
+            #     db=db
+            # )
+            # # Update the user_query to process the original query
+            # chat_request.user_query = original_query
+            logger.info(f"Profile updated, processing original query: {original_query}")
+            # Use the original query for LLM processing
+            query_to_process = original_query
         elif profile_updated:
             # Profile was updated but no original query to process
-            confirmation = profile_response or "Your profile has been updated. Now you can ask your nutrition question!"
-            await ChatService.store_assistant_message(
-                conversation_id=conversation.id,
-                content=confirmation,
-                db=db
-            )
-            return {
-                "success": True,
-                "message": "Profile updated",
-                "data": ChatResponse(
-                    conv_id=chat_request.conv_id,
-                    prompt_id=chat_request.prompt_id,  # Include prompt_id in response
-                    user_query=chat_request.user_query,
-                    response=confirmation,
-                    streamed=False
-                )
-            }
+            # Continue with current message to provide contextual response
+            logger.info("Profile updated, continuing with current context")
+            query_to_process = chat_request.user_query
+        else:
+            # No profile update, use the current query
+            query_to_process = chat_request.user_query
 
         # CRITICAL FIX: Apply dynamic category guardrails AFTER profile completion
         # This ensures profile information is processed before guardrails, but still protects against off-topic queries
@@ -471,7 +463,7 @@ class ChatService:
         # Apply guardrails for all prompt types using dynamic LLM classification with conversation context
         logger.debug(f"Applying dynamic guardrails for category: {category}")
         is_allowed = await ChatService.classify_query_with_llm(
-            chat_request.user_query, 
+            query_to_process,  # Use the query_to_process instead of chat_request.user_query
             current_user, 
             category=category,
             conversation_history=history_msgs  # Pass conversation history for context
@@ -479,9 +471,9 @@ class ChatService:
         if not is_allowed:
             logger.debug(f"Query rejected by dynamic guardrails for category: {category}")
             from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
-            guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=chat_request.user_query)
+            guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
             denial_response = await process_query_with_prompt(
-                user_message=chat_request.user_query,
+                user_message=query_to_process,
                 system_prompt=guardrails_prompt,
                 conversation_history=[],
                 user=current_user,
@@ -514,7 +506,7 @@ class ChatService:
         # CRITICAL FIX: Apply dynamic guardrails for all conversations
         # This ensures all responses stay within health and wellness boundaries
         from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
-        guardrails = DEFAULT_PROMPT_GUARDRAILS.format(user_query=chat_request.user_query)
+        guardrails = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
         
         # If we have a custom system prompt (from default conversation), use it with guardrails
         if getattr(conversation, '_custom_system_prompt', None):
@@ -530,7 +522,7 @@ class ChatService:
         
         # Get the actual LLM response
         response = await process_query_with_prompt(
-            user_message=chat_request.user_query,
+            user_message=query_to_process,
             system_prompt=system_prompt,
             conversation_history=history_msgs,
             user=current_user,
@@ -545,9 +537,13 @@ class ChatService:
             db=db
         )
         
-        # If profile was updated, combine the responses
+        # If profile was updated, include a brief acknowledgment with the response
         final_response = response
-        if profile_updated and profile_response:
+        if profile_updated and original_query:
+            # Include a brief acknowledgment that profile was updated and we're answering the original query
+            final_response = "Thank you for updating your profile. Based on your information:\n\n" + response
+        elif profile_updated and profile_response:
+            # Profile updated but continuing with current context
             final_response = profile_response + "\n\n" + response
         
         return {
@@ -595,7 +591,7 @@ class ChatService:
         
         # CRITICAL FIX: Check profile completion FIRST, before guardrails
         # This ensures profile information is processed before being rejected by guardrails
-        profile_response, should_continue_with_llm, profile_updated = await ProfileCompletionService.process_with_profile_completion(
+        profile_response, should_continue_with_llm, profile_updated, original_query = await ProfileCompletionService.process_with_profile_completion(
             db=db,
             user_id=current_user.id,
             user_message=chat_request.user_query,
@@ -618,6 +614,19 @@ class ChatService:
                 
             return StreamingResponse(profile_stream(), media_type="text/plain")
         
+        # Determine which query to process based on profile update status
+        if profile_updated and original_query:
+            # Use the original query for LLM processing
+            logger.info(f"Profile updated, processing original query: {original_query}")
+            query_to_process = original_query
+        elif profile_updated:
+            # Profile updated but no original query to process
+            logger.info("Profile updated, continuing with current context")
+            query_to_process = chat_request.user_query
+        else:
+            # No profile update, use the current query
+            query_to_process = chat_request.user_query
+        
         # CRITICAL FIX: Apply dynamic category guardrails AFTER profile completion
         # This ensures profile information is processed before guardrails, but still protects against off-topic queries
         category = chat_request.prompt_id or "health and wellness"
@@ -625,7 +634,7 @@ class ChatService:
         # Apply guardrails for all prompt types using dynamic LLM classification with conversation context
         logger.debug(f"Applying dynamic guardrails for category: {category}")
         is_allowed = await ChatService.classify_query_with_llm(
-            chat_request.user_query, 
+            query_to_process,  # Use the query_to_process instead of chat_request.user_query
             current_user, 
             category=category,
             conversation_history=history_msgs  # Pass conversation history for context
@@ -633,9 +642,9 @@ class ChatService:
         if not is_allowed:
             logger.debug(f"Query rejected by dynamic guardrails for category: {category}")
             from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
-            guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=chat_request.user_query)
+            guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
             denial_response = await process_query_with_prompt(
-                user_message=chat_request.user_query,
+                user_message=query_to_process,
                 system_prompt=guardrails_prompt,
                 conversation_history=[],
                 user=current_user,
@@ -660,7 +669,7 @@ class ChatService:
         # CRITICAL FIX: Apply dynamic guardrails for all conversations
         # This ensures all responses stay within health and wellness boundaries
         from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
-        guardrails = DEFAULT_PROMPT_GUARDRAILS.format(user_query=chat_request.user_query)
+        guardrails = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
         
         # If we have a custom system prompt (from default conversation), use it with guardrails
         if getattr(conversation, '_custom_system_prompt', None):
@@ -676,13 +685,15 @@ class ChatService:
         
         async def llm_stream():
             try:
-                # If profile was updated, include that in the response
-                if profile_updated and profile_response:
+                # If profile was updated with original query, provide brief acknowledgment
+                if profile_updated and original_query:
+                    yield "Thank you for updating your profile. Based on your information:\n\n"
+                elif profile_updated and profile_response:
                     yield profile_response + "\n\n"
                 
                 # Get the actual LLM response
                 response = await process_query_with_prompt(
-                    user_message=chat_request.user_query,
+                    user_message=query_to_process,
                     system_prompt=system_prompt,
                     conversation_history=history_msgs,
                     user=current_user,
