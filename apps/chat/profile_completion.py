@@ -622,16 +622,37 @@ class ProfileCompletionService:
         # Check if there was a previous query that needs to be addressed after profile completion
         original_query = None
         if has_profile_info and conversation_history:
-            # Look for a recent message that was asking for something that required profile
-            for msg in reversed(conversation_history[-4:]):  # Check last 4 messages
-                if msg.get('role') == 'assistant' and any(field in msg.get('content', '').lower() for field in ['age', 'height', 'weight', 'gender', 'profile']):
-                    # Found a message asking for profile info, get the user's original query before that
-                    for original_msg in reversed(conversation_history[:-1]):
-                        if original_msg.get('role') == 'user' and not ProfileCompletionService.detect_profile_info_statically(original_msg.get('content', '')):
-                            original_query = original_msg.get('content')
-                            logger.info(f"Found original query to process after profile completion: {original_query}")
+            # Look for a recent user message that was asking for something that required profile
+            # This will be the query to continue with after profile update
+            # for msg in reversed(conversation_history[-4:]):  # Check last 4 messages
+            #     if msg.get('role') == 'assistant' and any(field in msg.get('content', '').lower() for field in ['age', 'height', 'weight', 'gender', 'profile']):
+            #         # Found a message asking for profile info, get the user's original query before that
+            #         for original_msg in reversed(conversation_history[:-1]):
+            #             if original_msg.get('role') == 'user' and not ProfileCompletionService.detect_profile_info_statically(original_msg.get('content', '')):
+            #                 original_query = original_msg.get('content')
+            #                 logger.info(f"Found original query to process after profile completion: {original_query}")
+            #                 break
+
+            for i in range(len(conversation_history) - 1, -1, -1):
+                msg = conversation_history[i]
+                if msg.get('role') == 'user':
+                    # Check if this was a real query (not just profile info)
+                    if not ProfileCompletionService.detect_profile_info_statically(msg.get('content', '')):
+                        original_query = msg.get('content')
+                        logger.info(f"Found original query to process after profile completion: {original_query}")
+                        break
+                    # Also check if there's an assistant message asking for profile before this
+                    elif i > 0 and conversation_history[i-1].get('role') == 'assistant':
+                        assistant_msg = conversation_history[i-1].get('content', '').lower()
+                        if any(field in assistant_msg for field in ['age', 'height', 'weight', 'gender', 'profile', 'personalized']):
+                            # Look for the user query before the assistant's profile request
+                            for j in range(i-2, -1, -1):
+                                if conversation_history[j].get('role') == 'user':
+                                    if not ProfileCompletionService.detect_profile_info_statically(conversation_history[j].get('content', '')):
+                                        original_query = conversation_history[j].get('content')
+                                        logger.info(f"Found original query before profile request: {original_query}")
+                                        break
                             break
-                    break
         
         if has_profile_info:
             # User is providing profile info, try to extract and update
@@ -670,16 +691,20 @@ class ProfileCompletionService:
                     
                     if is_now_complete and original_query:
                         # Profile is now complete and we have an original query to process
-                        confirmation = "I've updated your profile with the information you provided. Now let me help you with your original request."
+                        # Return a brief confirmation and process the original query
+                        confirmation = "Thank you for providing your profile information. Let me now help you with your request about: " + original_query[:50] + "..."
                         return confirmation, True, True, original_query
                     elif is_now_complete:
                         # Profile is complete but no specific query to process
-                        return "I've updated your profile with the information you provided.", True, True, None
+                        # Still return True to continue with LLM to provide a helpful response
+                        return "Your profile has been updated successfully. How can I help you today?", True, True, None
                     else:
                         # Profile still incomplete, ask for remaining fields
                         logger.info(f"Profile still incomplete after update. Remaining fields: {remaining_fields}")
+                        # If we have an original query, include it in the context
+                        query_context = original_query or user_message
                         profile_message = await ProfileCompletionService.generate_profile_completion_message(
-                            original_query or user_message, remaining_fields, conversation_history, user
+                            query_context, remaining_fields, conversation_history, user
                         )
                         return profile_message, False, False, None
                 else:
