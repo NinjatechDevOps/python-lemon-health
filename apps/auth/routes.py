@@ -136,9 +136,13 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)) -> Any:
                     "otp_message": otp_message
                 }
             )
-        # Otherwise, it's a simple error message
+        # # Otherwise, it's a simple error message
+        # return api_error_response(
+        #     status_code=status.HTTP_401_UNAUTHORIZED,
+        #     message=result
+        # )
         return api_error_response(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_404_NOT_FOUND,
             message=result
         )
     
