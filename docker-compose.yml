@@ -1,8 +1,9 @@
+name: lemonhealth-fastapi-backend
 services:
   app:
     build:
       context: .
-    container_name: lemonhealth-api
+    container_name: lemonhealth-fastapi-backend
     ports:
       - "8000:8000"
     depends_on:
@@ -13,10 +14,10 @@ services:
       - media_data:/app/media
     env_file:
       - .env.docker
-    restart: on-failure
+    restart: always
   db:
     image: postgres:15
-    container_name: lemonhealth-db
+    container_name: lemonhealth-postgres-db
     restart: always
     env_file:
       - .env.docker
@@ -37,3 +38,6 @@ volumes:
   postgres_data:
   media_data:
   redis_data:
+
+networks:
+  lemonhealth_fastapi_backend:
