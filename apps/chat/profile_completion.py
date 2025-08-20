@@ -255,9 +255,11 @@ class ProfileCompletionService:
                         else:
                             logger.debug(f"Invalid height value type: {type(value)}, value: {value}")
                             continue
-                            
-                        if 100 <= height_val <= 250:  # Reasonable height range
+
+                        if extracted_data['height_unit'] is not None and extracted_data['height_unit'].lower() in ['cm', 'centimeters', 'centimeter'] and 100 <= height_val <= 250:  # Reasonable height range
                             cleaned_data[field] = height_val
+                        elif extracted_data['height_unit'] is not None and extracted_data['height_unit'].lower() in ['ft', 'feet', 'foot','ft/in']:
+                            cleaned_data[field] = height_val # Reasonable height range in feet
                         else:
                             logger.debug(f"Invalid height value: {height_val}, skipping")
                     except (ValueError, TypeError):
@@ -296,8 +298,9 @@ class ProfileCompletionService:
                         if field == 'height_unit':
                             if unit_lower in ['cm', 'centimeters', 'centimeter']:
                                 cleaned_data[field] = 'cm'
-                            elif unit_lower in ['ft', 'feet', 'foot']:
-                                cleaned_data[field] = 'ft'
+                            elif unit_lower in ['ft', 'feet', 'foot','ft/in']:
+                                # cleaned_data[field] = 'ft'
+                                cleaned_data[field] = 'ft/in'
                         elif field == 'weight_unit':
                             if unit_lower in ['kg', 'kilograms', 'kilogram']:
                                 cleaned_data[field] = 'kg'
@@ -774,15 +777,46 @@ class ProfileCompletionService:
         message_lower = user_message.lower()
         
         # Check for explicit profile information patterns
+        # profile_patterns = [
+        #     r'\b\d+\s*(?:years?\s*old|y\.?o\.?)\b',  # age patterns
+        #     r'\b\d+\s*(?:kg|kilograms?)\b',  # weight patterns
+        #     r'\b\d+\s*(?:cm|centimeters?|ft|feet?)\b',  # height patterns
+        #     r'\b(male|female|other)\b',  # gender patterns
+        #     r'\bI\s+(?:am|weight|height|measure)\b',  # "I am/weight/height" patterns
+        #     r'\bmy\s+(?:age|weight|height|gender)\b',  # "my age/weight/height" patterns
+        # ]
         profile_patterns = [
-            r'\b\d+\s*(?:years?\s*old|y\.?o\.?)\b',  # age patterns
-            r'\b\d+\s*(?:kg|kilograms?)\b',  # weight patterns
-            r'\b\d+\s*(?:cm|centimeters?|ft|feet?)\b',  # height patterns
-            r'\b(male|female|other)\b',  # gender patterns
-            r'\bI\s+(?:am|weight|height|measure)\b',  # "I am/weight/height" patterns
-            r'\bmy\s+(?:age|weight|height|gender)\b',  # "my age/weight/height" patterns
+            # ---- Age patterns ----
+            r'\b\d+\s*(?:years?\s*old|yrs?|y\.?o\.?)\b',  # "25 years old", "25 yrs", "25 y.o."
+            r'\b(?:age\s*(is|=)?\s*)?\d+\b',  # "age 25", "age is 25"
+            r'\bI\s*am\s*\d+\b',  # "I am 25"
+            r"\bI'm\s*\d+\b",  # "I'm 25"
+
+            # ---- Weight patterns ----
+            r'\b\d+\s*(?:kg|kilograms?|kgs?)\b',  # "70 kg", "70kgs"
+            r'\b\d+\s*(?:pounds?|lbs?)\b',  # "150 lb", "150 lbs", "150 pounds"
+            r'\b(?:weight\s*(is|=)?\s*)?\d+\b',  # "weight 67", "weight is 67"
+            r'\bI\s*(?:weigh|weight)\s*\d+\b',  # "I weigh 67", "I weight 67"
+
+            # ---- Height patterns ----
+            r'\b\d+\s*(?:cm|centimeters?|cms?)\b',  # "170 cm", "170 cms"
+            r'\b\d+\s*(?:m|meters?)\b',  # "1.75 m"
+            r'\b\d+(\.\d+)?\s*(?:ft|feet|foot)\b',  # "5.8 ft", "5 feet"
+            r'\b\d+[\'′]\s*\d*(?:\"|in|inch|inches)?\b',  # "5'7\"", "5′7", "5' 7 in"
+            r'\b(?:height\s*(is|=)?\s*)?\d+(\.\d+)?\b',  # "height 165", "height is 165"
+            r'\bI\s*(?:am|stand)\s*\d+(\.\d+)?\b',  # "I am 5.9", "I stand 6"
+
+            # ---- Gender patterns ----
+            r'\b(male|female|other|man|woman|girl|boy)\b',  # gender variations
+            r'\b(?:gender\s*(is|=)?\s*)(male|female|other)\b',  # "gender is male"
+            r'\bI\s*am\s*(male|female|other)\b',  # "I am male"
+            r"\bI'm\s*(male|female|other)\b",  # "I'm female"
+
+            # ---- Generic patterns ----
+            r'\bI\s+(?:am|weigh|weight|height|stand|measure)\b',  # generic starters
+            r'\bmy\s+(?:age|weight|height|gender)\b',  # "my age/weight..."
         ]
-        
+
         import re
         for pattern in profile_patterns:
             if re.search(pattern, message_lower):

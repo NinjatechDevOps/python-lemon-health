@@ -16,7 +16,7 @@ def setup_logging(environment: str = "development"):
     """
     
     # Create logs directory if it doesn't exist
-    logs_dir = Path("logs")
+    logs_dir = Path("static/logs")
     logs_dir.mkdir(exist_ok=True)
     
     # Define log file paths
