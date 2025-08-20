@@ -335,9 +335,22 @@ class ChatService:
         Returns:
             List of message dictionaries
         """
+        # Commented out: Original query that included all messages including error/out-of-scope messages
+        # result = await db.execute(
+        #     select(ChatMessage)
+        #     .where(ChatMessage.conversation_id == conversation_id)
+        #     .order_by(ChatMessage.created_at.desc())  # Get most recent first
+        #     .limit(limit_messages)
+        # )
+        
+        # Updated: Filter out messages marked as out_of_scope to prevent error messages from being passed to LLM
+        # This prevents the "I'm sorry, I can't assist you with that topic" messages from being included in conversation history
         result = await db.execute(
             select(ChatMessage)
-            .where(ChatMessage.conversation_id == conversation_id)
+            .where(
+                ChatMessage.conversation_id == conversation_id,
+                ChatMessage.is_out_of_scope == False  # Exclude error/rejection messages
+            )
             .order_by(ChatMessage.created_at.desc())  # Get most recent first
             .limit(limit_messages)
         )
@@ -456,48 +469,68 @@ class ChatService:
             # No profile update, use the current query
             query_to_process = chat_request.user_query
 
-        # CRITICAL FIX: Apply dynamic category guardrails AFTER profile completion
-        # This ensures profile information is processed before guardrails, but still protects against off-topic queries
-        category = chat_request.prompt_id or "health and wellness"
+        # Commented out: Old guardrail logic that was checking profile update messages instead of original queries
+        # # CRITICAL FIX: Apply dynamic category guardrails AFTER profile completion
+        # # This ensures profile information is processed before guardrails, but still protects against off-topic queries
+        # category = chat_request.prompt_id or "health and wellness"
+        # 
+        # # Apply guardrails for all prompt types using dynamic LLM classification with conversation context
+        # logger.debug(f"Applying dynamic guardrails for category: {category}")
+        # is_allowed = await ChatService.classify_query_with_llm(
+        #     query_to_process,  # Use the query_to_process instead of chat_request.user_query
+        #     current_user, 
+        #     category=category,
+        #     conversation_history=history_msgs  # Pass conversation history for context
+        # )
         
-        # Apply guardrails for all prompt types using dynamic LLM classification with conversation context
-        logger.debug(f"Applying dynamic guardrails for category: {category}")
-        is_allowed = await ChatService.classify_query_with_llm(
-            query_to_process,  # Use the query_to_process instead of chat_request.user_query
-            current_user, 
-            category=category,
-            conversation_history=history_msgs  # Pass conversation history for context
-        )
-        if not is_allowed:
-            logger.debug(f"Query rejected by dynamic guardrails for category: {category}")
-            from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
-            guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
-            denial_response = await process_query_with_prompt(
-                user_message=query_to_process,
-                system_prompt=guardrails_prompt,
-                conversation_history=[],
-                user=current_user,
-                temperature=0.3,
-                max_tokens=100
+        # Updated: Skip guardrail check if profile was just updated and we're continuing with original query
+        # This prevents profile updates and acknowledgments from being incorrectly flagged as off-topic
+        skip_guardrails = profile_updated and (original_query or profile_response)
+        
+        if not skip_guardrails:
+            # Only apply guardrails for non-profile-update scenarios
+            category = chat_request.prompt_id or "health and wellness"
+            logger.debug(f"Applying dynamic guardrails for category: {category}")
+            
+            is_allowed = await ChatService.classify_query_with_llm(
+                query_to_process,  # Use the query_to_process instead of chat_request.user_query
+                current_user, 
+                category=category,
+                conversation_history=history_msgs  # Pass conversation history for context
             )
-            # Store assistant message as out-of-scope
-            await ChatService.store_assistant_message(
-                conversation_id=conversation.id,
-                content=denial_response,
-                db=db,
-                is_out_of_scope=True
-            )
-            return {
-                "success": True,
-                "message": f"Query not related to Health and Wellness",
-                "data": ChatResponse(
-                    conv_id=chat_request.conv_id,
-                    prompt_id=chat_request.prompt_id,  # Include prompt_id in response
-                    user_query=chat_request.user_query,
-                    response=denial_response,
-                    streamed=False
+            
+            if not is_allowed:
+                logger.debug(f"Query rejected by dynamic guardrails for category: {category}")
+                from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
+                guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
+                denial_response = await process_query_with_prompt(
+                    user_message=query_to_process,
+                    system_prompt=guardrails_prompt,
+                    conversation_history=[],
+                    user=current_user,
+                    temperature=0.3,
+                    max_tokens=100
                 )
-            }
+                # Store assistant message as out-of-scope
+                await ChatService.store_assistant_message(
+                    conversation_id=conversation.id,
+                    content=denial_response,
+                    db=db,
+                    is_out_of_scope=True
+                )
+                return {
+                    "success": True,
+                    "message": f"Query not related to Health and Wellness",
+                    "data": ChatResponse(
+                        conv_id=chat_request.conv_id,
+                        prompt_id=chat_request.prompt_id,  # Include prompt_id in response
+                        user_query=chat_request.user_query,
+                        response=denial_response,
+                        streamed=False
+                    )
+                }
+        else:
+            logger.info("Skipping guardrails check due to profile update - continuing conversation context")
 
         # Profile is complete or user provided profile info - proceed with LLM
         # Get system prompt and add profile context if available
@@ -530,11 +563,21 @@ class ChatService:
             max_tokens=1000   # Reasonable response length
         )
         
-        # Store assistant message
+        # Commented out: Always storing assistant message without checking if it's an error/out-of-scope response
+        # await ChatService.store_assistant_message(
+        #     conversation_id=conversation.id,
+        #     content=response,
+        #     db=db
+        # )
+        
+        # Updated: Check if the response is an out-of-scope error message and mark it appropriately
+        # This prevents error messages from polluting the conversation history
+        is_out_of_scope_response = "I'm sorry, I can't assist you with that topic" in response
         await ChatService.store_assistant_message(
             conversation_id=conversation.id,
             content=response,
-            db=db
+            db=db,
+            is_out_of_scope=is_out_of_scope_response
         )
         
         # If profile was updated, include a brief acknowledgment with the response
@@ -627,40 +670,60 @@ class ChatService:
             # No profile update, use the current query
             query_to_process = chat_request.user_query
         
-        # CRITICAL FIX: Apply dynamic category guardrails AFTER profile completion
-        # This ensures profile information is processed before guardrails, but still protects against off-topic queries
-        category = chat_request.prompt_id or "health and wellness"
+        # Commented out: Old guardrail logic that was checking profile update messages instead of original queries
+        # # CRITICAL FIX: Apply dynamic category guardrails AFTER profile completion
+        # # This ensures profile information is processed before guardrails, but still protects against off-topic queries
+        # category = chat_request.prompt_id or "health and wellness"
+        # 
+        # # Apply guardrails for all prompt types using dynamic LLM classification with conversation context
+        # logger.debug(f"Applying dynamic guardrails for category: {category}")
+        # is_allowed = await ChatService.classify_query_with_llm(
+        #     query_to_process,  # Use the query_to_process instead of chat_request.user_query
+        #     current_user, 
+        #     category=category,
+        #     conversation_history=history_msgs  # Pass conversation history for context
+        # )
         
-        # Apply guardrails for all prompt types using dynamic LLM classification with conversation context
-        logger.debug(f"Applying dynamic guardrails for category: {category}")
-        is_allowed = await ChatService.classify_query_with_llm(
-            query_to_process,  # Use the query_to_process instead of chat_request.user_query
-            current_user, 
-            category=category,
-            conversation_history=history_msgs  # Pass conversation history for context
-        )
-        if not is_allowed:
-            logger.debug(f"Query rejected by dynamic guardrails for category: {category}")
-            from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
-            guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
-            denial_response = await process_query_with_prompt(
-                user_message=query_to_process,
-                system_prompt=guardrails_prompt,
-                conversation_history=[],
-                user=current_user,
-                temperature=0.3,
-                max_tokens=100
+        # Updated: Skip guardrail check if profile was just updated and we're continuing with original query
+        # This prevents profile updates and acknowledgments from being incorrectly flagged as off-topic
+        skip_guardrails = profile_updated and (original_query or profile_response)
+        
+        if not skip_guardrails:
+            # Only apply guardrails for non-profile-update scenarios
+            category = chat_request.prompt_id or "health and wellness"
+            logger.debug(f"Applying dynamic guardrails for category: {category}")
+            
+            is_allowed = await ChatService.classify_query_with_llm(
+                query_to_process,  # Use the query_to_process instead of chat_request.user_query
+                current_user, 
+                category=category,
+                conversation_history=history_msgs  # Pass conversation history for context
             )
-            # Store assistant message as out-of-scope
-            await ChatService.store_assistant_message(
-                conversation_id=conversation.id,
-                content=denial_response,
-                db=db,
-                is_out_of_scope=True
-            )
-            async def denial_stream():
-                yield denial_response
-            return StreamingResponse(denial_stream(), media_type="text/plain")
+            
+            if not is_allowed:
+                logger.debug(f"Query rejected by dynamic guardrails for category: {category}")
+                from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
+                guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
+                denial_response = await process_query_with_prompt(
+                    user_message=query_to_process,
+                    system_prompt=guardrails_prompt,
+                    conversation_history=[],
+                    user=current_user,
+                    temperature=0.3,
+                    max_tokens=100
+                )
+                # Store assistant message as out-of-scope
+                await ChatService.store_assistant_message(
+                    conversation_id=conversation.id,
+                    content=denial_response,
+                    db=db,
+                    is_out_of_scope=True
+                )
+                async def denial_stream():
+                    yield denial_response
+                return StreamingResponse(denial_stream(), media_type="text/plain")
+        else:
+            logger.info("Skipping guardrails check due to profile update - continuing conversation context")
 
         # Profile is complete or user provided profile info - proceed with LLM
         # Get system prompt and add profile context if available
@@ -701,11 +764,21 @@ class ChatService:
                     max_tokens=1000   # Reasonable response length
                 )
                 
-                # Store assistant message
+                # Commented out: Always storing assistant message without checking if it's an error/out-of-scope response
+                # await ChatService.store_assistant_message(
+                #     conversation_id=conversation.id,
+                #     content=response,
+                #     db=db
+                # )
+                
+                # Updated: Check if the response is an out-of-scope error message and mark it appropriately
+                # This prevents error messages from polluting the conversation history
+                is_out_of_scope_response = "I'm sorry, I can't assist you with that topic" in response
                 await ChatService.store_assistant_message(
                     conversation_id=conversation.id,
                     content=response,
-                    db=db
+                    db=db,
+                    is_out_of_scope=is_out_of_scope_response
                 )
                 
                 # Simulate streaming (split by sentences)
