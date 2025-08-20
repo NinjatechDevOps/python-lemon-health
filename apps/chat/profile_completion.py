@@ -764,6 +764,41 @@ class ProfileCompletionService:
             return ProfileCompletionService.detect_profile_info_statically(user_message)
     
     @staticmethod
+    def is_acknowledgment_message(user_message: str) -> bool:
+        """
+        Check if the message is just an acknowledgment without meaningful content
+        
+        Args:
+            user_message: User's message
+            
+        Returns:
+            bool: True if it's an acknowledgment message
+        """
+        message_lower = user_message.lower().strip()
+        
+        # Common acknowledgment patterns
+        acknowledgment_patterns = [
+            r'^(thanks?|thank\s+you)',
+            r'^(ok|okay|alright|sure|yes|yeah|yep)',
+            r'^(got\s+it|understood|noted)',
+            r'^(thanks?\s+for\s+sharing)',
+            r'^(appreciate\s+it)',
+            r'^(cool|great|good|nice|awesome)',
+            r'^(perfect|excellent)',
+        ]
+        
+        import re
+        for pattern in acknowledgment_patterns:
+            if re.match(pattern, message_lower):
+                return True
+        
+        # Also check for very short messages (less than 15 chars) that might be acknowledgments
+        if len(message_lower) < 15 and not any(char.isdigit() for char in message_lower):
+            return True
+            
+        return False
+    
+    @staticmethod
     def detect_profile_info_statically(user_message: str) -> bool:
         """
         Fallback static pattern matching for profile information detection
@@ -774,6 +809,10 @@ class ProfileCompletionService:
         Returns:
             bool: True if user is providing profile information
         """
+        # First check if it's just an acknowledgment
+        if ProfileCompletionService.is_acknowledgment_message(user_message):
+            return False
+            
         message_lower = user_message.lower()
         
         # Check for explicit profile information patterns
