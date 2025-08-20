@@ -295,12 +295,15 @@ class DocumentService:
         # Add search filter if provided
         if search:
             # Search in original filename and LLM-generated filename only
-            from sqlalchemy import or_
+            from sqlalchemy import or_,and_
             search_filter = or_(
                 ## removed the search # Document.original_filename.ilike(f"%{search}%"),
                 Document.llm_generated_filename.ilike(f"%{search}%")
             )
             base_query = base_query.where(search_filter)
+            completed_docs = and_(Document.analysis.has(DocumentAnalysis.analysis_status == "completed"))
+            base_query = base_query.where(completed_docs)
+            
         
         # Get total count for pagination
         count_query = select(func.count()).select_from(base_query.subquery())
