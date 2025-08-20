@@ -21,3 +21,8 @@ media/*
 # static/*
 
 .env.docker
+
+# IDE specific files
+.idea/
+CLAUDE.md
+/static/logs/*
