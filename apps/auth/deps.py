@@ -47,7 +47,7 @@ async def get_current_user(
     
     if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"success": False, "message": "Inactive user", "data": {}}
         )
     
