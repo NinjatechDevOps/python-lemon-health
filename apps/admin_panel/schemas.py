@@ -27,6 +27,7 @@ class AdminUserResponse(BaseModel):
     is_verified: bool
     is_admin: bool
     created_at: datetime
+    country_code: Optional[str] = None
 
 
 
