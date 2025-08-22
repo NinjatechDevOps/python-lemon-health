@@ -239,7 +239,7 @@ class AdminService:
             
             if is_verified is not None:
                 base_query = base_query.where(User.is_verified == is_verified)
-            
+            base_query = base_query.where(User.is_admin == False)
             # Get total count
             count_query = select(func.count()).select_from(base_query.subquery())
             total_result = await db.execute(count_query)
