@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, ValidationInfo, model_validator
+from apps.core.phone_validator import validate_phone_number
 
 
 class AdminLoginRequest(BaseModel):
@@ -46,22 +47,165 @@ class AdminCreateUserRequest(BaseModel):
     """Schema for creating user via admin"""
     first_name: str = Field(..., min_length=1, max_length=50)
     last_name: str = Field(..., min_length=1, max_length=50)
-    mobile_number: str = Field(..., min_length=10, max_length=20)
+    mobile_number: str = Field(..., min_length=7, max_length=15)
     country_code: str = Field(default="+91", max_length=10)
     password: str = Field(..., min_length=6)
     email: Optional[str] = Field(None, max_length=255)
     is_verified: bool = Field(..., description="Whether the user is verified (admin must explicitly set this)")
+    
+    # Commented out: Old Pydantic v1 style validator that wasn't working with v2
+    # @validator('mobile_number')
+    # def validate_mobile_number(cls, v, values):
+    #     # Clean the mobile number (remove any non-digit characters)
+    #     import re
+    #     cleaned = re.sub(r'\D', '', v)
+    #     if not cleaned:
+    #         raise ValueError('Mobile number must contain digits')
+    #     
+    #     # Get country code if available
+    #     country_code = values.get('country_code', '+91')
+    #     
+    #     # Validate using country-specific rules
+    #     is_valid, error_msg = validate_phone_number(cleaned, country_code)
+    #     if not is_valid:
+    #         raise ValueError(error_msg)
+    #     
+    #     return cleaned
+    
+    # Updated: Using Pydantic v2 field_validator without depending on other fields during validation
+    @field_validator('mobile_number')
+    @classmethod
+    def validate_mobile_number(cls, v):
+        # Clean the mobile number (remove any non-digit characters)
+        import re
+        cleaned = re.sub(r'\D', '', v)
+        if not cleaned:
+            raise ValueError('Mobile number must contain digits')
+        
+        # For initial validation, just check basic length requirements
+        # Country-specific validation will be done in model_validator
+        if len(cleaned) < 7 or len(cleaned) > 15:
+            raise ValueError('Mobile number must be between 7 and 15 digits')
+        
+        return cleaned
+    
+    # Commented out: Old Pydantic v1 style validator
+    # @validator('country_code')
+    # def validate_country_code(cls, v):
+    #     import re
+    #     if not re.match(r'^\+[0-9]{1,4}$', v):
+    #         raise ValueError('Country code must start with + followed by 1-4 digits')
+    #     return v
+    
+    # Updated: Using Pydantic v2 field_validator
+    @field_validator('country_code')
+    @classmethod
+    def validate_country_code(cls, v):
+        import re
+        if not re.match(r'^\+[0-9]{1,4}$', v):
+            raise ValueError('Country code must start with + followed by 1-4 digits')
+        return v
+    
+    # Added: Model validator to validate mobile number with country code
+    @model_validator(mode='after')
+    def validate_mobile_with_country(self):
+        """Validate mobile number against country-specific rules"""
+        if self.mobile_number and self.country_code:
+            is_valid, error_msg = validate_phone_number(self.mobile_number, self.country_code)
+            if not is_valid:
+                raise ValueError(f"Mobile number validation failed: {error_msg}")
+        return self
 
 
 class AdminUpdateUserRequest(BaseModel):
     """Schema for updating user via admin"""
     first_name: Optional[str] = Field(None, min_length=1, max_length=50)
     last_name: Optional[str] = Field(None, min_length=1, max_length=50)
-    mobile_number: Optional[str] = Field(None, min_length=10, max_length=20)
+    mobile_number: Optional[str] = Field(None, min_length=7, max_length=15)
     country_code: Optional[str] = Field(None, max_length=10)
     email: Optional[str] = Field(None, max_length=255)
     is_active: Optional[bool] = None
     is_verified: Optional[bool] = None
+    
+    # Commented out: Old Pydantic v1 style validator that wasn't working with v2
+    # @validator('mobile_number')
+    # def validate_mobile_number(cls, v, values):
+    #     if v is None:
+    #         return v
+    #     
+    #     # Clean the mobile number (remove any non-digit characters)
+    #     import re
+    #     cleaned = re.sub(r'\D', '', v)
+    #     if not cleaned:
+    #         raise ValueError('Mobile number must contain digits')
+    #     
+    #     # Get country code if available, otherwise use default
+    #     country_code = values.get('country_code')
+    #     if not country_code:
+    #         # If country_code is not provided in update, we'll do basic validation
+    #         if len(cleaned) < 7 or len(cleaned) > 15:
+    #             raise ValueError('Mobile number must be between 7 and 15 digits')
+    #         return cleaned
+    #     
+    #     # Validate using country-specific rules
+    #     is_valid, error_msg = validate_phone_number(cleaned, country_code)
+    #     if not is_valid:
+    #         raise ValueError(error_msg)
+    #     
+    #     return cleaned
+    
+    # Updated: Using Pydantic v2 field_validator without depending on other fields during validation
+    @field_validator('mobile_number')
+    @classmethod
+    def validate_mobile_number(cls, v):
+        if v is None:
+            return v
+        
+        # Clean the mobile number (remove any non-digit characters)
+        import re
+        cleaned = re.sub(r'\D', '', v)
+        if not cleaned:
+            raise ValueError('Mobile number must contain digits')
+        
+        # For initial validation, just check basic length requirements
+        # Country-specific validation will be done in model_validator
+        if len(cleaned) < 7 or len(cleaned) > 15:
+            raise ValueError('Mobile number must be between 7 and 15 digits')
+        
+        return cleaned
+    
+    # Commented out: Old Pydantic v1 style validator
+    # @validator('country_code')
+    # def validate_country_code(cls, v):
+    #     if v is None:
+    #         return v
+    #     
+    #     import re
+    #     if not re.match(r'^\+[0-9]{1,4}$', v):
+    #         raise ValueError('Country code must start with + followed by 1-4 digits')
+    #     return v
+    
+    # Updated: Using Pydantic v2 field_validator
+    @field_validator('country_code')
+    @classmethod
+    def validate_country_code(cls, v):
+        if v is None:
+            return v
+        
+        import re
+        if not re.match(r'^\+[0-9]{1,4}$', v):
+            raise ValueError('Country code must start with + followed by 1-4 digits')
+        return v
+    
+    # Added: Model validator to validate mobile number with country code
+    @model_validator(mode='after')
+    def validate_mobile_with_country(self):
+        """Validate mobile number against country-specific rules"""
+        if self.mobile_number and self.country_code:
+            is_valid, error_msg = validate_phone_number(self.mobile_number, self.country_code)
+            if not is_valid:
+                raise ValueError(f"Mobile number validation failed: {error_msg}")
+        return self
 
 
 class AdminUserListResponse(BaseModel):
