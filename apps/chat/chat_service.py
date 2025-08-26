@@ -404,7 +404,8 @@ class ChatService:
         db: AsyncSession
     ) -> Dict[str, Any]:
         """Process chat request with profile completion logic"""
-        # Validate conv_id format
+        # Validate conv_id format\
+        logger.debug("In process chat with profuile completion")
         await ChatService.validate_conversation_id(chat_request.conv_id)
         
         # Get or create conversation
@@ -621,7 +622,9 @@ class ChatService:
         # If profile was updated, include a brief acknowledgment with the response
         final_response = response
         if profile_updated and original_query:
+
             if is_out_of_scope_response:
+
                 final_response = "Thank you for updating your profile.\n\n How may I help you,Please feel free to ask?"
             else:
                 final_response = "Thank you for updating your profile. Based on your information:\n\n" + response
