@@ -169,7 +169,14 @@ class ChatService:
             await db.refresh(conversation)
             
             # Use database system prompt with guardrails
-            guardrails = DEFAULT_PROMPT_GUARDRAILS.format(user_query=user_query)
+            # Commented out: Missing conversation history
+            # guardrails = DEFAULT_PROMPT_GUARDRAILS.format(user_query=user_query)
+            
+            # Updated: Include conversation history placeholder (will be empty for initial message)
+            guardrails = DEFAULT_PROMPT_GUARDRAILS.format(
+                user_query=user_query,
+                conversation_history="No previous conversation"  # First message in conversation
+            )
             system_prompt = f"{default_prompt.system_prompt}\n\n{guardrails}"
             
         else:
@@ -196,7 +203,14 @@ class ChatService:
             await db.refresh(conversation)
             
             # Create combined system prompt for default functionality
-            guardrails = DEFAULT_PROMPT_GUARDRAILS.format(user_query=user_query)
+            # Commented out: Missing conversation history
+            # guardrails = DEFAULT_PROMPT_GUARDRAILS.format(user_query=user_query)
+            
+            # Updated: Include conversation history placeholder (will be empty for initial message)
+            guardrails = DEFAULT_PROMPT_GUARDRAILS.format(
+                user_query=user_query,
+                conversation_history="No previous conversation"  # First message in conversation
+            )
             system_prompt = DEFAULT_PROMPT_SYSTEM.format(guardrails=guardrails)
         
         return conversation, system_prompt
@@ -352,7 +366,7 @@ class ChatService:
                 ChatMessage.is_out_of_scope == False  # Exclude error/rejection messages
             )
             .order_by(ChatMessage.created_at.desc())  # Get most recent first
-            .limit(limit_messages)
+            #.limit(limit_messages)
         )
         history = result.scalars().all()
         
@@ -502,11 +516,23 @@ class ChatService:
             if not is_allowed:
                 logger.debug(f"Query rejected by dynamic guardrails for category: {category}")
                 from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
-                guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
+                # Commented out: Not passing conversation history to guardrails
+                # guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
+                
+                # Updated: Format conversation history for the guardrails prompt
+                conversation_text = "\n".join([
+                    f"{msg['role'].upper()}: {msg['content']}" 
+                    for msg in history_msgs
+                ]) if history_msgs else "No previous conversation"
+                
+                guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(
+                    user_query=query_to_process,
+                    conversation_history=conversation_text
+                )
                 denial_response = await process_query_with_prompt(
                     user_message=query_to_process,
                     system_prompt=guardrails_prompt,
-                    conversation_history=[],
+                    conversation_history=history_msgs,  # Pass the actual conversation history
                     user=current_user,
                     temperature=0.3,
                     max_tokens=100
@@ -539,7 +565,19 @@ class ChatService:
         # CRITICAL FIX: Apply dynamic guardrails for all conversations
         # This ensures all responses stay within health and wellness boundaries
         from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
-        guardrails = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
+        # Commented out: Missing conversation history
+        # guardrails = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
+        
+        # Updated: Format conversation history for guardrails
+        conversation_text = "\n".join([
+            f"{msg['role'].upper()}: {msg['content']}" 
+            for msg in history_msgs
+        ]) if history_msgs else "No previous conversation"
+        
+        guardrails = DEFAULT_PROMPT_GUARDRAILS.format(
+            user_query=query_to_process,
+            conversation_history=conversation_text
+        )
         
         # If we have a custom system prompt (from default conversation), use it with guardrails
         if getattr(conversation, '_custom_system_prompt', None):
@@ -583,8 +621,10 @@ class ChatService:
         # If profile was updated, include a brief acknowledgment with the response
         final_response = response
         if profile_updated and original_query:
-            # Include a brief acknowledgment that profile was updated and we're answering the original query
-            final_response = "Thank you for updating your profile. Based on your information:\n\n" + response
+            if is_out_of_scope_response:
+                final_response = "Thank you for updating your profile.\n\n How may I help you,Please feel free to ask?"
+            else:
+                final_response = "Thank you for updating your profile. Based on your information:\n\n" + response
         elif profile_updated and profile_response:
             # Profile updated but continuing with current context
             final_response = profile_response + "\n\n" + response
@@ -703,11 +743,23 @@ class ChatService:
             if not is_allowed:
                 logger.debug(f"Query rejected by dynamic guardrails for category: {category}")
                 from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
-                guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
+                # Commented out: Not passing conversation history to guardrails
+                # guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
+                
+                # Updated: Format conversation history for the guardrails prompt
+                conversation_text = "\n".join([
+                    f"{msg['role'].upper()}: {msg['content']}" 
+                    for msg in history_msgs
+                ]) if history_msgs else "No previous conversation"
+                
+                guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(
+                    user_query=query_to_process,
+                    conversation_history=conversation_text
+                )
                 denial_response = await process_query_with_prompt(
                     user_message=query_to_process,
                     system_prompt=guardrails_prompt,
-                    conversation_history=[],
+                    conversation_history=history_msgs,  # Pass the actual conversation history
                     user=current_user,
                     temperature=0.3,
                     max_tokens=100
@@ -732,7 +784,19 @@ class ChatService:
         # CRITICAL FIX: Apply dynamic guardrails for all conversations
         # This ensures all responses stay within health and wellness boundaries
         from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
-        guardrails = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
+        # Commented out: Missing conversation history
+        # guardrails = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
+        
+        # Updated: Format conversation history for guardrails
+        conversation_text = "\n".join([
+            f"{msg['role'].upper()}: {msg['content']}" 
+            for msg in history_msgs
+        ]) if history_msgs else "No previous conversation"
+        
+        guardrails = DEFAULT_PROMPT_GUARDRAILS.format(
+            user_query=query_to_process,
+            conversation_history=conversation_text
+        )
         
         # If we have a custom system prompt (from default conversation), use it with guardrails
         if getattr(conversation, '_custom_system_prompt', None):
