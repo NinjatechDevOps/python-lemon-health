@@ -424,7 +424,8 @@ async def get_admin_chat_history_list(
                 message_count=conv["message_count"],
                 last_message_preview=conv["last_message_preview"],
                 created_at=conv["created_at"],
-                updated_at=conv["updated_at"]
+                updated_at=conv["updated_at"],
+                profile_picture_url = conv['profile_picture_url']
             ))
         
         response_data = AdminChatHistoryListResponse(
@@ -487,7 +488,8 @@ async def get_admin_chat_history_detail(
                 role=msg["role"],
                 content=msg["content"],
                 created_at=msg["created_at"],
-                user_id=msg["user_id"]
+                user_id=msg["user_id"],
+                profile_picture_url = msg['profile_picture_url']
             ))
         
         response_data = AdminChatHistoryResponse(

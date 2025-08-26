@@ -8,6 +8,8 @@ from apps.core.security import get_password_hash, verify_password, create_access
 from apps.admin_panel.schemas import AdminCreateUserRequest, AdminUpdateUserRequest
 from apps.chat.models import Conversation, ChatMessage, Prompt
 from apps.core.logging_config import get_logger
+from apps.profile.models import Profile
+from apps.profile.utils import convert_relative_to_complete_url
 
 logger = get_logger(__name__)
 
@@ -409,8 +411,9 @@ class AdminService:
         try:
             # Build base query with user and prompt info
             base_query = (
-                select(Conversation, User, Prompt)
+                select(Conversation, User, Profile,Prompt)
                 .join(User, Conversation.user_id == User.id)
+                .join(Profile, Profile.user_id == User.id)
                 .join(Prompt, Conversation.prompt_id == Prompt.id)
             )
             
@@ -436,7 +439,7 @@ class AdminService:
             
             # Add user filter
             if user_id:
-                base_query = base_query.where(Conversation.user_id == user_id)
+                base_query = base_query.where(Conversation.user_id == user_id and Profile.user_id == user_id)
             
             # Add prompt type filter
             if prompt_type:
@@ -458,10 +461,9 @@ class AdminService:
             
             conversations_result = await db.execute(conversations_query)
             conversations = conversations_result.all()
-            
             # Build response data
             conversation_items = []
-            for conv, user, prompt in conversations:
+            for conv, user, profile,prompt in conversations:
                 # Get message count and last message preview
                 message_count_result = await db.execute(
                     select(func.count(ChatMessage.id)).where(ChatMessage.conversation_id == conv.id)
@@ -488,7 +490,8 @@ class AdminService:
                     "message_count": message_count,
                     "last_message_preview": last_message_preview,
                     "created_at": conv.created_at.isoformat(),
-                    "updated_at": conv.updated_at.isoformat()
+                    "updated_at": conv.updated_at.isoformat(),
+                    "profile_picture_url":convert_relative_to_complete_url(profile.profile_picture_url)
                 })
             
             return conversation_items, total
@@ -508,17 +511,17 @@ class AdminService:
         try:
             # Get conversation with user and prompt info
             result = await db.execute(
-                select(Conversation, User, Prompt)
+                select(Conversation, User, Profile,Prompt)
                 .join(User, Conversation.user_id == User.id)
+                .join(Profile,Profile.user_id == Conversation.user_id)
                 .join(Prompt, Conversation.prompt_id == Prompt.id)
                 .where(Conversation.conv_id == conv_id)
             )
             conversation_data = result.first()
-            
             if not conversation_data:
                 return None
             
-            conv, user, prompt = conversation_data
+            conv, user, profile, prompt = conversation_data
             
             # Get all messages for this conversation
             messages_result = await db.execute(
@@ -537,9 +540,9 @@ class AdminService:
                     "role": msg.role.value,
                     "content": msg.content,
                     "created_at": msg.created_at.isoformat(),
-                    "user_id": msg.user_id
+                    "user_id": msg.user_id,
+                    "profile_picture_url":convert_relative_to_complete_url(profile.profile_picture_url) if msg.user_id else ""
                 })
-            
             return {
                 "conv_id": conv.conv_id,
                 "user_id": user.id,
@@ -549,7 +552,7 @@ class AdminService:
                 "title": conv.title,
                 "created_at": conv.created_at.isoformat(),
                 "updated_at": conv.updated_at.isoformat(),
-                "messages": messages_response
+                "messages": messages_response,
             }
             
         except Exception as e:

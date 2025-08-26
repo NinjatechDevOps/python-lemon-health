@@ -227,6 +227,7 @@ class AdminChatMessageResponse(BaseModel):
     content: str
     created_at: str
     user_id: Optional[int] = None
+    profile_picture_url : str
 
 class AdminChatHistoryResponse(BaseModel):
     """Schema for admin chat history detail response"""
@@ -252,6 +253,7 @@ class AdminChatHistoryListItem(BaseModel):
     last_message_preview: Optional[str] = None
     created_at: str
     updated_at: str
+    profile_picture_url : str
 
 class AdminChatHistoryListResponse(BaseModel):
     """Schema for admin chat history list response"""
