@@ -46,7 +46,24 @@ async def admin_login(
                 "data": None
             }
 
-        client_ip = request.client.host
+        import ipaddress
+
+        def get_real_ip(request: Request):
+            client_ip = request.headers.get("x-forwarded-for", request.client.host)
+            # Extract first if multiple IPs
+            if "," in client_ip:
+                client_ip = client_ip.split(",")[0].strip()
+
+            # Replace private/local IPs with fallback for testing
+            try:
+                ip_obj = ipaddress.ip_address(client_ip)
+                if ip_obj.is_private:
+                    return "8.8.8.8"  # fallback
+            except ValueError:
+                pass
+
+            return client_ip
+        client_ip = get_real_ip(request)
         url = f"http://ip-api.com/json/{client_ip}"
         with urllib.request.urlopen(url) as response_url:
             client_data = json.loads(response_url.read().decode())
