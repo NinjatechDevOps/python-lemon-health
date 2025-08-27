@@ -12,7 +12,8 @@ from apps.admin_panel.schemas import (
 )
 from apps.admin_panel.services import AdminService
 from apps.core.logging_config import get_logger
-
+import urllib.request
+import json
 logger = get_logger(__name__)
 
 # Create admin router
@@ -22,6 +23,7 @@ admin_router = APIRouter(tags=["Admin"])
 @admin_router.post("/login", response_model=AdminLoginResponse)
 async def admin_login(
     login_data: AdminLoginRequest,
+    request:Request,
     db: AsyncSession = Depends(get_db)
 ) -> Dict[str, Any]:
     """
@@ -43,7 +45,11 @@ async def admin_login(
                 "message": result.get("message", "Authentication failed"),
                 "data": None
             }
-        
+
+        client_ip = request.client.host
+        url = f"http://ip-api.com/json/{client_ip}"
+        with urllib.request.urlopen(url) as response_url:
+            client_data = json.loads(response_url.read().decode())
         # Structure response with tokens nested inside token object
         token_data = {
             "access_token": result["access_token"],
@@ -56,7 +62,8 @@ async def admin_login(
             "message": "Admin login successful",
             "data": {
                 "token": token_data,
-                "user": result["user"]
+                "user": result["user"],
+                "client_data":client_data
             }
         }
         
