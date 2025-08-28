@@ -419,7 +419,7 @@ class ChatService:
         )
         
         # Store user message
-        await ChatService.store_user_message(
+        user_message_id = await ChatService.store_user_message(
             conversation_id=conversation.id,
             user_id=current_user.id,
             content=chat_request.user_query,
@@ -545,6 +545,9 @@ class ChatService:
                     db=db,
                     is_out_of_scope=True
                 )
+                user_message_id.is_out_of_scope  = True
+                await db.commit()
+                await db.refresh(user_message_id)
                 return {
                     "success": True,
                     "message": f"Query not related to Health and Wellness",
@@ -618,7 +621,9 @@ class ChatService:
             db=db,
             is_out_of_scope=is_out_of_scope_response
         )
-        
+        user_message_id.is_out_of_scope = is_out_of_scope_response
+        await db.commit()
+        await db.refresh(user_message_id)
         # If profile was updated, include a brief acknowledgment with the response
         final_response = response
         if profile_updated and original_query:
