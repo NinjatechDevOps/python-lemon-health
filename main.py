@@ -76,18 +76,69 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     errors = exc.errors()
     error_messages = []
     
+    # Extract the main error message for display
+    main_message = "Validation error"
+    
     for error in errors:
+        msg = error.get("msg", "")
+        error_type = error.get("type", "")
+        
+        # Clean up various error message patterns
+        cleaned_msg = msg
+        
+        # Handle "Value error, " prefix (from custom validators)
+        if msg.startswith("Value error, "):
+            cleaned_msg = msg[13:]  # Remove "Value error, " (13 characters)
+        
+        # Handle "Assertion failed, " prefix
+        elif msg.startswith("Assertion failed, "):
+            cleaned_msg = msg[18:]  # Remove "Assertion failed, " (18 characters)
+        
+        # Handle field required errors
+        elif error_type == "missing" or "field required" in msg.lower():
+            field_name = error.get("loc", ["field"])[-1] if error.get("loc") else "field"
+            cleaned_msg = f"{field_name.replace('_', ' ').title()} is required"
+        
+        # Handle string length errors
+        elif "at least" in msg.lower() and "characters" in msg.lower():
+            # Extract the meaningful part about character requirements
+            if "ensure this value has at least" in msg.lower():
+                cleaned_msg = msg.replace("ensure this value has", "Must have")
+        elif "at most" in msg.lower() and "characters" in msg.lower():
+            if "ensure this value has at most" in msg.lower():
+                cleaned_msg = msg.replace("ensure this value has", "Must have")
+        
+        # Handle type errors
+        elif error_type.startswith("type_error"):
+            field_name = error.get("loc", ["field"])[-1] if error.get("loc") else "field"
+            if error_type == "type_error.integer":
+                cleaned_msg = f"{field_name.replace('_', ' ').title()} must be a number"
+            elif error_type == "type_error.str":
+                cleaned_msg = f"{field_name.replace('_', ' ').title()} must be text"
+            elif error_type == "type_error.bool":
+                cleaned_msg = f"{field_name.replace('_', ' ').title()} must be true or false"
+            elif error_type == "type_error.none.not_allowed":
+                cleaned_msg = f"{field_name.replace('_', ' ').title()} cannot be empty"
+        
+        # Handle value errors for constraints
+        elif "ensure this value" in msg.lower():
+            cleaned_msg = msg.replace("ensure this value", "Value must")
+            
         error_messages.append({
             "loc": error.get("loc", []),
-            "msg": error.get("msg", ""),
+            "msg": cleaned_msg,
             "type": error.get("type", "")
         })
+    
+    # Use the first error's cleaned message as the main message
+    if error_messages and error_messages[0]["msg"]:
+        main_message = error_messages[0]["msg"]
     
     return JSONResponse(
         status_code=422,
         content={
             "success": False,
-            "message": "Validation error",
+            "message": main_message,
             "data": {"errors": error_messages}
         }
     )
