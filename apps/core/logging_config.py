@@ -6,6 +6,39 @@ import logging.config
 import os
 from datetime import datetime
 from pathlib import Path
+import pytz
+
+# Custom formatter class to add both UTC and Indian time
+class DualTimezoneFormatter(logging.Formatter):
+    """Custom formatter that includes both UTC and Indian timezone"""
+    
+    def formatTime(self, record, datefmt=None):
+        """Override formatTime to include both UTC and IST"""
+        # Get UTC time
+        utc_time = datetime.utcfromtimestamp(record.created).replace(tzinfo=pytz.UTC)
+        
+        # Convert to Indian timezone
+        indian_tz = pytz.timezone('Asia/Kolkata')
+        indian_time = utc_time.astimezone(indian_tz)
+        
+        # Format both times
+        utc_str = utc_time.strftime('%Y-%m-%d %H:%M:%S')
+        ist_str = indian_time.strftime('%Y-%m-%d %H:%M:%S')
+        
+        return f"[UTC: {utc_str} | IST: {ist_str}]"
+    
+    def format(self, record):
+        """Format the log record with dual timezone"""
+        # Store original datefmt
+        original_datefmt = self.datefmt
+        # Temporarily set datefmt to None to use our custom formatTime
+        self.datefmt = None
+        # Get the formatted time string
+        record.asctime = self.formatTime(record)
+        # Restore original datefmt
+        self.datefmt = original_datefmt
+        # Return the formatted message
+        return super().format(record)
 
 def setup_logging(environment: str = "development"):
     """
@@ -19,9 +52,16 @@ def setup_logging(environment: str = "development"):
     logs_dir = Path("static/logs")
     logs_dir.mkdir(exist_ok=True)
     
-    # Define log file paths
-    log_file = logs_dir / f"lemon_health_{environment}.log"
-    error_log_file = logs_dir / f"lemon_health_{environment}_errors.log"
+    # Commented out: Old log file naming without date
+    # # Define log file paths
+    # log_file = logs_dir / f"lemon_health_{environment}.log"
+    # error_log_file = logs_dir / f"lemon_health_{environment}_errors.log"
+    
+    # Updated: Create date-based log file names using Indian timezone
+    indian_tz = pytz.timezone('Asia/Kolkata')
+    current_date = datetime.now(indian_tz).strftime('%Y-%m-%d')
+    log_file = logs_dir / f"lemon_health_{environment}_{current_date}.log"
+    error_log_file = logs_dir / f"lemon_health_{environment}_errors_{current_date}.log"
     
     # Configure logging based on environment
     if environment == "production":
@@ -30,16 +70,28 @@ def setup_logging(environment: str = "development"):
             "version": 1,
             "disable_existing_loggers": False,
             "formatters": {
+                # Commented out: Old formatter without dual timezone
+                # "detailed": {
+                #     "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                #     "datefmt": "%Y-%m-%d %H:%M:%S"
+                # },
+                # Updated: Using custom formatter class with dual timezone
                 "detailed": {
-                    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                    "datefmt": "%Y-%m-%d %H:%M:%S"
+                    "()": DualTimezoneFormatter,
+                    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
                 },
                 "simple": {
                     "format": "%(levelname)s - %(message)s"
                 },
+                # Commented out: Old JSON formatter without dual timezone
+                # "json": {
+                #     "format": '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "message": "%(message)s"}',
+                #     "datefmt": "%Y-%m-%d %H:%M:%S"
+                # }
+                # Updated: JSON formatter with dual timezone
                 "json": {
-                    "format": '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "message": "%(message)s"}',
-                    "datefmt": "%Y-%m-%d %H:%M:%S"
+                    "()": DualTimezoneFormatter,
+                    "format": '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "message": "%(message)s"}'
                 }
             },
             "handlers": {
@@ -49,21 +101,43 @@ def setup_logging(environment: str = "development"):
                     "formatter": "simple",
                     "stream": "ext://sys.stdout"
                 },
+                # Commented out: Old RotatingFileHandler without date-based rotation
+                # "file": {
+                #     "class": "logging.handlers.RotatingFileHandler",
+                #     "level": "INFO",
+                #     "formatter": "detailed",
+                #     "filename": str(log_file),
+                #     "maxBytes": 10485760,  # 10MB
+                #     "backupCount": 5
+                # },
+                # Updated: Using TimedRotatingFileHandler for daily rotation
                 "file": {
-                    "class": "logging.handlers.RotatingFileHandler",
+                    "class": "logging.handlers.TimedRotatingFileHandler",
                     "level": "INFO",
                     "formatter": "detailed",
                     "filename": str(log_file),
-                    "maxBytes": 10485760,  # 10MB
-                    "backupCount": 5
+                    "when": "midnight",
+                    "interval": 1,
+                    "backupCount": 30  # Keep 30 days of logs
                 },
+                # Commented out: Old error handler without date-based rotation
+                # "error_file": {
+                #     "class": "logging.handlers.RotatingFileHandler",
+                #     "level": "ERROR",
+                #     "formatter": "detailed",
+                #     "filename": str(error_log_file),
+                #     "maxBytes": 10485760,  # 10MB
+                #     "backupCount": 5
+                # }
+                # Updated: Using TimedRotatingFileHandler for daily rotation
                 "error_file": {
-                    "class": "logging.handlers.RotatingFileHandler",
+                    "class": "logging.handlers.TimedRotatingFileHandler",
                     "level": "ERROR",
                     "formatter": "detailed",
                     "filename": str(error_log_file),
-                    "maxBytes": 10485760,  # 10MB
-                    "backupCount": 5
+                    "when": "midnight",
+                    "interval": 1,
+                    "backupCount": 30  # Keep 30 days of error logs
                 }
             },
             "loggers": {
@@ -105,9 +179,15 @@ def setup_logging(environment: str = "development"):
             "version": 1,
             "disable_existing_loggers": False,
             "formatters": {
+                # Commented out: Old formatter without dual timezone
+                # "detailed": {
+                #     "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                #     "datefmt": "%Y-%m-%d %H:%M:%S"
+                # },
+                # Updated: Using custom formatter class with dual timezone
                 "detailed": {
-                    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-                    "datefmt": "%Y-%m-%d %H:%M:%S"
+                    "()": DualTimezoneFormatter,
+                    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
                 },
                 "simple": {
                     "format": "%(levelname)s - %(message)s"
@@ -120,13 +200,24 @@ def setup_logging(environment: str = "development"):
                     "formatter": "simple",
                     "stream": "ext://sys.stdout"
                 },
+                # Commented out: Old RotatingFileHandler without date-based rotation
+                # "file": {
+                #     "class": "logging.handlers.RotatingFileHandler",
+                #     "level": "DEBUG",
+                #     "formatter": "detailed",
+                #     "filename": str(log_file),
+                #     "maxBytes": 10485760,  # 10MB
+                #     "backupCount": 3
+                # }
+                # Updated: Using TimedRotatingFileHandler for daily rotation
                 "file": {
-                    "class": "logging.handlers.RotatingFileHandler",
+                    "class": "logging.handlers.TimedRotatingFileHandler",
                     "level": "DEBUG",
                     "formatter": "detailed",
                     "filename": str(log_file),
-                    "maxBytes": 10485760,  # 10MB
-                    "backupCount": 3
+                    "when": "midnight",
+                    "interval": 1,
+                    "backupCount": 15  # Keep 15 days of logs for staging
                 }
             },
             "loggers": {
@@ -148,9 +239,15 @@ def setup_logging(environment: str = "development"):
             "version": 1,
             "disable_existing_loggers": False,
             "formatters": {
+                # Commented out: Old formatter without dual timezone
+                # "detailed": {
+                #     "format": "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
+                #     "datefmt": "%Y-%m-%d %H:%M:%S"
+                # },
+                # Updated: Using custom formatter class with dual timezone
                 "detailed": {
-                    "format": "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s",
-                    "datefmt": "%Y-%m-%d %H:%M:%S"
+                    "()": DualTimezoneFormatter,
+                    "format": "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s"
                 },
                 "simple": {
                     "format": "%(levelname)s - %(name)s - %(message)s"
@@ -163,11 +260,22 @@ def setup_logging(environment: str = "development"):
                     "formatter": "simple",
                     "stream": "ext://sys.stdout"
                 },
+                # Commented out: Old FileHandler without date-based rotation
+                # "file": {
+                #     "class": "logging.FileHandler",
+                #     "level": "DEBUG",
+                #     "formatter": "detailed",
+                #     "filename": str(log_file)
+                # }
+                # Updated: Using TimedRotatingFileHandler for daily rotation in development
                 "file": {
-                    "class": "logging.FileHandler",
+                    "class": "logging.handlers.TimedRotatingFileHandler",
                     "level": "DEBUG",
                     "formatter": "detailed",
-                    "filename": str(log_file)
+                    "filename": str(log_file),
+                    "when": "midnight",
+                    "interval": 1,
+                    "backupCount": 7  # Keep 7 days of logs for development
                 }
             },
             "loggers": {
