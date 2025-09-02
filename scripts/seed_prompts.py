@@ -37,7 +37,8 @@ async def seed_prompts():
             # Define initial prompts
             prompts = [
                 {
-                    "name": "Booking",
+                    # "name": "Booking",
+                    "name": "Appointments",
                     "description": "Book appointments and services",
                     "prompt_type": PromptType.BOOKING,
                     "system_prompt": "You are Lemon, a booking assistant. Help users book appointments, services, and manage their schedule. Be helpful and efficient in scheduling.",
