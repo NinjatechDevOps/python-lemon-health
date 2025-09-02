@@ -167,7 +167,8 @@ class AuthService:
         
         # Check if user is active
         if not user.is_active:
-            return False, "Your account has been deactivated. Please contact support for assistance."
+            # return False, "Your account has been deactivated. Please contact support for assistance."
+            return False, "We’ve suspended your account for violating our Terms of Use. If you believe this is a mistake, please contact us at info@lemonclinic.es or via WhatsApp at +34 665 903 865."
         
         # Check if user is admin - prevent admin users from logging into mobile app
         if user.is_admin:
