@@ -263,8 +263,8 @@ class ChatService:
             .where(Conversation.conv_id == conv_id)
         )
         conversation = result.scalar_one_or_none()
-        
         if not conversation:
+            logger.info(f"no conversation")
             # Handle default prompt case (prompt_id is None, "default", or empty string)
             if prompt_id is None or prompt_id == "default" or prompt_id == "":
                 # Use LLM to classify if query is related to nutrition or exercise
@@ -279,6 +279,7 @@ class ChatService:
                 conversation, system_prompt = await ChatService.create_default_conversation(
                     conv_id, user_id, user_query, db
                 )
+                logger.info(f"created default conversation")
                 # Store the custom system prompt for later use
                 conversation._custom_system_prompt = system_prompt
                 prompt = conversation._custom_system_prompt
@@ -294,7 +295,7 @@ class ChatService:
                     status_code=400, 
                     detail=f"Prompt '{prompt_id}' not found. Available prompts: {[p.value for p in PromptType]}"
                 )
-            
+            logger.info(f"Found the prompt {prompt.name}")
             # Set title to first 60 chars of user_query
             title = user_query[:60] if user_query else "New Chat"
             conversation = Conversation(
@@ -309,6 +310,7 @@ class ChatService:
             await db.commit()
             await db.refresh(conversation)
         else:
+            logger.info(f"found conversation")
             # For existing conversations, don't re-apply query classification
             # The guardrails will be applied in the chat processing methods
             prompt = conversation.prompt
@@ -405,7 +407,7 @@ class ChatService:
     ) -> Dict[str, Any]:
         """Process chat request with profile completion logic"""
         # Validate conv_id format\
-        logger.debug("In process chat with profuile completion")
+        logger.debug("In process chat with profile completion")
         await ChatService.validate_conversation_id(chat_request.conv_id)
         
         # Get or create conversation
@@ -417,7 +419,7 @@ class ChatService:
             db=db,
             user=current_user # Pass current_user to get_or_create_conversation
         )
-        
+        logger.info(f"conversation created and conversation id is {conversation.id}")
         # Store user message
         user_message_id = await ChatService.store_user_message(
             conversation_id=conversation.id,
@@ -425,10 +427,10 @@ class ChatService:
             content=chat_request.user_query,
             db=db
         )
-        
+        logger.info("User message stored after conversation creation")
         # Get conversation history (limited to reduce token usage)
         history_msgs = await ChatService.get_conversation_history(conversation.id, db, limit_messages=4)
-
+        logger.info(f"Conversation history retrieved with {len(history_msgs)} messages")
         # CRITICAL FIX: Check profile completion FIRST, before guardrails
         # This ensures profile information is processed before being rejected by guardrails
         profile_response, should_continue_with_llm, profile_updated, original_query = await ProfileCompletionService.process_with_profile_completion(
@@ -439,15 +441,17 @@ class ChatService:
             user=current_user,
             prompt_type=chat_request.prompt_id if chat_request.prompt_id and chat_request.prompt_id != "" else "default"  # Use "default" for default prompts
         )
-
+        logger.info("After profile completion processing")
         # If profile is incomplete and user is not providing profile info, return the profile completion message
         if not should_continue_with_llm:
+            logger.warning("Should not continue with llm - profile completion required")
             # Store the profile completion message
             await ChatService.store_assistant_message(
                 conversation_id=conversation.id,
                 content=profile_response,
                 db=db
             )
+            logger.info(f"stored the assistant message conversation id :{conversation.id} and profile response : {profile_response}")
             return {
                 "success": True,
                 "message": "Profile completion required",
@@ -481,6 +485,7 @@ class ChatService:
             logger.info("Profile updated, continuing with current context")
             query_to_process = chat_request.user_query
         else:
+            logger.info("Continue with current query - no profile update")
             # No profile update, use the current query
             query_to_process = chat_request.user_query
 
@@ -505,7 +510,7 @@ class ChatService:
         if not skip_guardrails:
             # Only apply guardrails for non-profile-update scenarios
             category = chat_request.prompt_id or "health and wellness"
-            logger.debug(f"Applying dynamic guardrails for category: {category}")
+            logger.info(f"Applying dynamic guardrails for category: {category}")
             
             is_allowed = await ChatService.classify_query_with_llm(
                 query_to_process,  # Use the query_to_process instead of chat_request.user_query
@@ -515,7 +520,7 @@ class ChatService:
             )
             
             if not is_allowed:
-                logger.debug(f"Query rejected by dynamic guardrails for category: {category}")
+                logger.info(f"Query rejected by dynamic guardrails for category: {category}")
                 from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
                 # Commented out: Not passing conversation history to guardrails
                 # guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=query_to_process)
@@ -538,6 +543,7 @@ class ChatService:
                     temperature=0.3,
                     max_tokens=100
                 )
+                logger.warning(f"Denial response from LLM: {denial_response}")
                 # Store assistant message as out-of-scope
                 await ChatService.store_assistant_message(
                     conversation_id=conversation.id,
@@ -545,6 +551,8 @@ class ChatService:
                     db=db,
                     is_out_of_scope=True
                 )
+                logger.info(f"Stored denial response as out-of-scope assistant message")
+                logger.info(f"User query was {chat_request.user_query}")
                 user_message_id.is_out_of_scope  = True
                 await db.commit()
                 await db.refresh(user_message_id)
@@ -594,7 +602,7 @@ class ChatService:
         profile_context = await ProfileCompletionService.get_user_profile_context(db, current_user.id)
         if profile_context:
             system_prompt = f"{system_prompt}\n\nUser Profile Context: {profile_context}"
-        
+        logger.info("Final system prompt constructed for LLM processing")
         # Get the actual LLM response
         response = await process_query_with_prompt(
             user_message=query_to_process,
@@ -604,7 +612,10 @@ class ChatService:
             temperature=0.7,  # Balanced creativity for general chat
             max_tokens=1000   # Reasonable response length
         )
-        
+        logger.info("LLM response received")
+        logger.info(f"LLM response: {response}")
+        logger.info(f"query to process was {query_to_process}")
+        logger.info(f"system prompt was {system_prompt}")
         # Commented out: Always storing assistant message without checking if it's an error/out-of-scope response
         # await ChatService.store_assistant_message(
         #     conversation_id=conversation.id,
@@ -615,12 +626,14 @@ class ChatService:
         # Updated: Check if the response is an out-of-scope error message and mark it appropriately
         # This prevents error messages from polluting the conversation history
         is_out_of_scope_response = "I'm sorry, I can't assist you with that topic" in response
+        logger.info(f"is_out_of_scope_response: {is_out_of_scope_response}")
         await ChatService.store_assistant_message(
             conversation_id=conversation.id,
             content=response,
             db=db,
             is_out_of_scope=is_out_of_scope_response
         )
+        logger.info(f"Store assistant message completed with response {response}")
         user_message_id.is_out_of_scope = is_out_of_scope_response
         await db.commit()
         await db.refresh(user_message_id)
@@ -636,7 +649,7 @@ class ChatService:
         elif profile_updated and profile_response:
             # Profile updated but continuing with current context
             final_response = profile_response + "\n\n" + response
-        
+        logger.info(f"Final response constructed for return")
         return {
             "success": True,
             "message": "Query processed successfully",

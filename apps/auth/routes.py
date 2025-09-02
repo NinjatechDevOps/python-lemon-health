@@ -41,12 +41,15 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> A
     5. Return success response
     """
     # Check if user with this mobile number and country code already exists
+    logger.info(f"url : /register")
+    logger.info(f"request : {user_in}")
     existing_user = await AuthService.get_user_by_mobile(
         db=db,
         mobile_number=user_in.mobile_number,
         country_code=user_in.country_code
     )
     if existing_user:
+        logger.warning(f"User with mobile {user_in.country_code}{user_in.mobile_number} already exists.")
         return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
             message="Looks like you already have an account. Please log in."
@@ -89,6 +92,7 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> A
             data={"errors": e.errors()}
         )
     # Always return 201 Created since the user account was created
+    logger.info('User registered successfully.')
     return api_response(
         success=True,
         message="User registered successfully. " + ("Please verify your mobile number." if otp_sent else "Verification code could not be sent. Please use the resend option."),
@@ -107,6 +111,8 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)) -> Any:
     4. Generate access token
     5. Return token
     """
+    logger.info(f"url : /login")
+    logger.info(f"request : {user_in}")
     success, result = await AuthService.login_user(
         db=db,
         mobile_number=user_in.mobile_number,
@@ -164,7 +170,7 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)) -> Any:
             status_code=400,
             data={"errors": e.errors()}
         )
-    
+    logger.info('User logged in successfully.')
     return api_response(
         success=True,
         message="Login successful",
@@ -184,6 +190,8 @@ async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession 
        - Password reset: Return success (user will then call reset password)
     4. Return appropriate response
     """
+    logger.info(f"url : /verify")
+    logger.info(f"request : {verification_in}")
     success, result = await AuthService.verify_code_and_user(
         db=db,
         mobile_number=verification_in.mobile_number,
@@ -193,6 +201,7 @@ async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession 
     )
     
     if not success:
+        logger.warning(f"Verification failed for mobile {verification_in.country_code}{verification_in.mobile_number}. Reason: {result}")
         # Include the code in the error response for debugging
         return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -214,11 +223,13 @@ async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession 
                 "user": result["user"]
             }
         except ValidationError as e:
+            logger.error(f"Token validation error: {e.errors()}")
             return api_error_response(
                 message="Invalid token data",
                 status_code=400,
                 data={"errors": e.errors()}
             )
+        logger.info('Password reset verification successful.')
         return api_response(
             success=True,
             message="Verification successful",
@@ -226,6 +237,7 @@ async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession 
         )
     
     elif verification_in.verification_type == VerificationTypeEnum.PASSWORD_RESET:
+        logger.info('Password reset verification successful.')
         return api_response(
             success=True,
             message="Password reset verification successful. You can now reset your password.",
@@ -251,6 +263,8 @@ async def resend_verification(verification_in: VerificationRequest, db: AsyncSes
     3. Return success response
     """
     # Find user by mobile number
+    logger.info(f"url : /resend-verification")
+    logger.info(f"request : {verification_in}")
     user = await AuthService.get_user_by_mobile(
         db=db,
         mobile_number=verification_in.mobile_number,
@@ -258,6 +272,7 @@ async def resend_verification(verification_in: VerificationRequest, db: AsyncSes
     )
     
     if not user:
+        logger.warning(f"User with mobile {verification_in.country_code}{verification_in.mobile_number} not found for resending verification.")
         return api_error_response(
             status_code=status.HTTP_404_NOT_FOUND,
             message="User not found"
@@ -288,7 +303,7 @@ async def resend_verification(verification_in: VerificationRequest, db: AsyncSes
         country_code=user.country_code,
         user_id=user.id
     )
-    
+    logger.info('Verification code resent successfully.')
     # Always return 200 OK since the request was processed
     return api_response(
         success=True,
@@ -311,6 +326,8 @@ async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = 
     3. Return success response
     """
     # Find user by mobile number
+    logger.info(f"url : /forgot-password")
+    logger.info(f"request : {request_in}")
     user = await AuthService.get_user_by_mobile(
         db=db,
         mobile_number=request_in.mobile_number,
@@ -318,6 +335,7 @@ async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = 
     )
     
     if not user:
+        logger.warning(f"User with mobile {request_in.country_code}{request_in.mobile_number} not found for password reset.")
         return api_error_response(
             status_code=status.HTTP_404_NOT_FOUND,
             message="User not found"
@@ -331,7 +349,7 @@ async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = 
         country_code=user.country_code,
         user_id=user.id
     )
-    
+    logger.info('Password reset verification code sent successfully.')
     # Always return 200 OK since the request was processed
     return api_response(
         success=True,
@@ -354,6 +372,9 @@ async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depe
     3. Return success response
     """
     # Find user by mobile number
+    logger.info(f"url : /reset-password")
+    logger.info(f"request : {reset_in}")    
+
     user = await AuthService.get_user_by_mobile(
         db=db,
         mobile_number=reset_in.mobile_number,
@@ -361,6 +382,7 @@ async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depe
     )
     
     if not user:
+        logger.warning(f"User with mobile {reset_in.country_code}{reset_in.mobile_number} not found for password reset.")   
         return api_error_response(
             status_code=status.HTTP_404_NOT_FOUND,
             message="User not found"
@@ -368,7 +390,7 @@ async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depe
     
     # Update password
     await AuthService.update_password(db, user, reset_in.new_password)
-    
+    logger.info('Password reset successfully.')
     return api_response(
         success=True,
         message="Password reset successfully",
@@ -431,6 +453,8 @@ async def change_password(
     3. Return success response
     """
     # Verify current password
+    logger.info(f"url : /change-password")
+    logger.info(f"request : {password_data}")
     if not verify_password(password_data.current_password, current_user.hashed_password):
         return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -439,7 +463,7 @@ async def change_password(
     
     # Update password
     await AuthService.update_password(db, current_user, password_data.new_password)
-    
+    logger.info('Password changed successfully.')   
     return api_response(
         success=True,
         message="Password changed successfully",
@@ -460,6 +484,8 @@ async def logout(
     2. Add refresh token to blacklist if provided
     3. Return success response
     """
+    logger.info(f"url : /logout")
+    logger.info(f"request : {logout_data}") 
     success = await AuthService.logout_user(
         access_token=logout_data.access_token,
         refresh_token=logout_data.refresh_token
@@ -470,7 +496,7 @@ async def logout(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="Failed to logout"
         )
-    
+    logger.info('User logged out successfully.')
     return api_response(
         success=True,
         message="Successfully logged out",
@@ -487,12 +513,15 @@ async def delete_me(
     """
     Soft delete the current authenticated user (set is_active=False)
     """
+    logger.info(f"url : /me [DELETE]")
+    logger.info(f"request by user_id : {current_user.id}")
     if not current_user.is_active:
         return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
             message="User is already inactive."
         )
     await AuthService.soft_delete_user(db, current_user)
+    logger.info('User account deleted (soft delete).')
     return api_response(
         success=True,
         message="User account deleted (soft delete).",

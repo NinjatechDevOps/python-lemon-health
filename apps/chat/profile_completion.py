@@ -674,11 +674,11 @@ class ProfileCompletionService:
                     user_message, conversation_history, missing_fields, user
                 )
             
-            logger.debug(f"Extracted data: {extracted_data}")
+            logger.info(f"Extracted data: {extracted_data}")
             
             if extracted_data:
                 # Data is already cleaned in extract_profile_info, use directly
-                logger.debug(f"Using extracted data directly: {extracted_data}")
+                logger.info(f"Using extracted data directly: {extracted_data}")
                 
                 # Update profile with extracted data
                 logger.info("Updating profile with extracted data")
@@ -734,7 +734,7 @@ class ProfileCompletionService:
         profile_message = await ProfileCompletionService.generate_profile_completion_message(
             user_message, missing_fields, conversation_history, user
         )
-        logger.debug(f"Generated profile completion message: {profile_message}")
+        logger.info(f"Generated profile completion message: {profile_message}")
         return profile_message, False, False, None 
 
     @staticmethod

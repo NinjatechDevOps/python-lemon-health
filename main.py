@@ -133,7 +133,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     # Use the first error's cleaned message as the main message
     if error_messages and error_messages[0]["msg"]:
         main_message = error_messages[0]["msg"]
-    
+    logger.error(f"Validation error: {main_message}")
     return JSONResponse(
         status_code=422,
         content={
