@@ -24,6 +24,8 @@ async def get_my_profile(
     """
     Get current user's profile
     """
+    logger.info(f"url : /me [GET]")
+    logger.info(f"request by user_id : {current_user.id}")
     profile = await ProfileService.get_profile_by_user_id(db, current_user.id)
     if not profile:
         # Instead of 404, return a default empty profile with user info
@@ -41,7 +43,7 @@ async def get_my_profile(
         )
         # Convert None to default image URL
         default_response.profile_picture_url = convert_relative_to_complete_url(None)
-        
+        logger.warning("No profile found. Returning default profile.")
         return api_response(
             success=True,
             message="No profile found. Returning default profile.",
@@ -57,7 +59,7 @@ async def get_my_profile(
     
     # Convert relative URL to complete URL
     response_data.profile_picture_url = convert_relative_to_complete_url(response_data.profile_picture_url)
-    
+    logger.info("Profile fetched successfully.")
     return api_response(
         success=True,
         message="Profile fetched successfully",
@@ -81,6 +83,8 @@ async def update_profile(
     Partial update using PATCH method
     Supports file upload for profile pictures
     """
+    logger.info(f"url : /  for update profile [POST]")
+    logger.info(f"request by user_id : {current_user.id}")
     try:
         # Convert form data to ProfileUpdate with proper type conversion
         profile_data, error_message = convert_form_data_to_profile_update(
@@ -94,7 +98,7 @@ async def update_profile(
         # Check for validation errors
         if error_message or profile_data is None:
             return api_error_response(status_code=400, message=error_message)
-        logger.debug(f"Profile data created: {profile_data.model_dump()}")
+        logger.info(f"Profile data created: {profile_data.model_dump()}")
         
         # Get existing profile
         profile = await ProfileService.get_profile_by_user_id(db, current_user.id)
@@ -135,7 +139,7 @@ async def update_profile(
         # Convert relative URL to complete URL
         response_data.profile_picture_url = convert_relative_to_complete_url(response_data.profile_picture_url)
         
-        logger.debug(f"Final response data: {response_data.model_dump()}")
+        logger.info(f"Final response data: {response_data.model_dump()}")
         return api_response(
             success=True,
             message=msg,
@@ -158,10 +162,13 @@ async def delete_profile(
     """
     Delete current user's profile
     """
+    logger.info(f"url : /  for delete profile [DELETE]")
+    logger.info(f"request by user_id : {current_user.id}")
     profile = await ProfileService.get_profile_by_user_id(db, current_user.id)
     if not profile:
         return api_error_response(status_code=404, message="Profile not found")
     
     await ProfileService.delete_profile(db, profile)
+    logger.info("Profile deleted successfully.")
     return api_response(success=True, message="Profile deleted successfully", data={})
 

@@ -36,8 +36,10 @@ async def get_prompts(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
     Get a list of all available prompts from the database.
     This endpoint does not require authentication.
     """
+    logger.info(f"url : /prompts [GET] - public endpoint")
     try:
         prompt_list = await ChatService.get_prompts(db)
+        logger.info(f"Retrieved {len(prompt_list)} prompts.")
         return {
             "success": True,
             "message": "Prompts retrieved successfully",
@@ -70,6 +72,9 @@ async def chat(
     - Other queries will be denied with a polite message from LLM
     """
     try:
+        logger.info(f"url : /  for chat [POST]")
+        logger.info(f"request by user_id : {current_user.id}")
+        logger.info(f"chat_request: {chat_request.model_dump()}")
         # Streamed or non-streamed response
         if chat_request.streamed:
             return await ChatService.process_streaming_chat(chat_request, current_user, db)
@@ -77,6 +82,7 @@ async def chat(
             result = await ChatService.process_chat_with_profile_completion(chat_request, current_user, db)
             return result
     except HTTPException as e:
+        logger.error(f"HTTPException: {e}")
         # Handle specific HTTP exceptions (like query not related to nutrition/exercise)
         if e.status_code == 400 and "Query not related to Nutrition or Exercise" in str(e.detail):
             # Use LLM to generate denial response
