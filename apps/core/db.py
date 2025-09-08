@@ -12,7 +12,7 @@ engine = create_async_engine(
     pool_recycle=1800,
     pool_pre_ping=True,
     # echo=settings.ENVIRONMENT == "development",
-    echo=False  # Disable SQL query logging
+    echo=True ### true means enable and false means disable
 )
 
 # Create async session factory

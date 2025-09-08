@@ -1,8 +1,9 @@
 import random
 import string
 import os
+import json
 from datetime import datetime, timedelta
-from typing import Optional, Tuple, Any, List
+from typing import Optional, Tuple, Any, List, Dict
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -11,6 +12,7 @@ from jose import JWTError
 from apps.core.config import settings
 from apps.core.security import create_access_token, create_refresh_token, get_password_hash, verify_password, verify_token
 from apps.auth.models import User, VerificationType
+from apps.admin_panel.models import Translation
 from apps.auth.twilio_service import twilio_service
 from apps.auth.schemas import VerificationTypeEnum
 import logging
@@ -430,3 +432,32 @@ class AuthService:
         await db.commit()
         await db.refresh(user)
         return user
+
+    @staticmethod
+    async def get_all_translations(db: AsyncSession) -> Optional[str]:
+        """
+        Get all translations for both supported languages
+        
+        Args:
+            db: Database session
+            
+        Returns:
+            JSON string with both languages: {"en": {...}, "es": {...}}
+        """
+        # Fetch all non-deleted translations
+        query = select(Translation).where(Translation.is_deleted == False)
+        result = await db.execute(query)
+        translations = result.scalars().all()
+        
+        # Build translations dictionary for both languages
+        translations_dict = {
+            "en": {},
+            "es": {}
+        }
+        
+        for translation in translations:
+            translations_dict["en"][translation.keyword] = translation.en
+            translations_dict["es"][translation.keyword] = translation.es
+        
+        # Convert to JSON string
+        return json.dumps(translations_dict, ensure_ascii=False)

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Any, Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import JWTError
@@ -527,4 +527,33 @@ async def delete_me(
         message="User account deleted (soft delete).",
         data={"user_id": current_user.id}
     )
+
+@router.get("/translations", response_model=BaseResponse)
+async def get_translations(
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Fetch all translations for both supported languages (en, es)
+    
+    Returns:
+        JSON response containing translations for both languages: {"en": {...}, "es": {...}}
+    """
+    logger.info(f"url : /translations")
+    
+    # Get all translations for both languages
+    translations_json = await AuthService.get_all_translations(db)
+    
+    if translations_json is None:
+        logger.error("Failed to fetch translations from database")
+        return api_error_response(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to fetch translations"
+        )
+    
+    logger.info('All translations fetched successfully')
+    return {
+        "success":True,
+        "message":"Translations fetched successfully",
+        "data":translations_json
+    }
 
