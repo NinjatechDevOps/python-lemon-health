@@ -292,3 +292,45 @@ class AdminOutOfScopeListResponse(BaseModel):
     total_pages: int
     has_next: bool
     has_prev: bool 
+
+
+# Translation Management Schemas
+class TranslationCreateRequest(BaseModel):
+    """Schema for creating a translation"""
+    keyword: str = Field(..., min_length=1, max_length=255, description="Unique keyword identifier")
+    en: str = Field(..., min_length=1, description="English translation")
+    es: str = Field(..., min_length=1, description="Spanish translation")
+    is_deletable: Optional[bool] = Field(None, description="Whether the translation can be deleted")
+
+
+class TranslationUpdateRequest(BaseModel):
+    """Schema for updating a translation"""
+    keyword: Optional[str] = Field(None, min_length=1, max_length=255, description="Unique keyword identifier")
+    en: Optional[str] = Field(None, min_length=1, description="English translation")
+    es: Optional[str] = Field(None, min_length=1, description="Spanish translation")
+    is_deletable: Optional[bool] = Field(None, description="Whether the translation can be deleted")
+
+
+class TranslationResponse(BaseModel):
+    """Schema for translation response"""
+    id: int
+    keyword: str
+    en: str
+    es: str
+    is_deleted: bool
+    is_deletable: bool
+    created_by: int
+    created_at: datetime
+    updated_at: datetime
+    creator_name: Optional[str] = None
+
+
+class TranslationListResponse(BaseModel):
+    """Schema for paginated translation list response"""
+    translations: List[TranslationResponse]
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+    has_next: bool
+    has_prev: bool

@@ -10,6 +10,8 @@ from apps.chat.models import Conversation, ChatMessage, Prompt
 from apps.core.logging_config import get_logger
 from apps.profile.models import Profile
 from apps.profile.utils import convert_relative_to_complete_url
+from apps.admin_panel.models import Translation
+from apps.admin_panel.schemas import TranslationCreateRequest, TranslationUpdateRequest
 
 logger = get_logger(__name__)
 
@@ -721,3 +723,213 @@ class AdminService:
         except Exception as e:
             logger.error(f"Error updating out-of-scope flag: {e}")
             return False, None, f"Error updating message: {str(e)}" 
+    
+    # Translation Management Methods
+    @staticmethod
+    async def create_translation(
+        db: AsyncSession,
+        translation_data: TranslationCreateRequest,
+        admin_user_id: int
+    ) -> Tuple[bool, Optional[Translation], str]:
+        """
+        Create a new translation
+        Returns:
+            Tuple[bool, Optional[Translation], str]: (success, translation, message)
+        """
+        try:
+            # Check if keyword already exists
+            existing_translation = await db.execute(
+                select(Translation).where(
+                    (Translation.keyword == translation_data.keyword) &
+                    (Translation.is_deleted == False)
+                )
+            )
+            if existing_translation.scalar_one_or_none():
+                return False, None, "Translation with this keyword already exists"
+            
+            # Create new translation
+            new_translation = Translation(
+                keyword=translation_data.keyword,
+                en=translation_data.en,
+                es=translation_data.es,
+                created_by=admin_user_id
+            )
+            
+            # Set is_deletable if provided
+            if translation_data.is_deletable is not None:
+                new_translation.is_deletable = translation_data.is_deletable
+            
+            db.add(new_translation)
+            await db.commit()
+            await db.refresh(new_translation)
+            
+            return True, new_translation, "Translation created successfully"
+            
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Error creating translation: {e}")
+            return False, None, f"Error creating translation: {str(e)}"
+    
+    @staticmethod
+    async def get_translations_list(
+        db: AsyncSession,
+        page: int = 1,
+        per_page: int = 20,
+        search: Optional[str] = None
+    ) -> Tuple[List[Translation], int]:
+        """
+        Get paginated list of translations with optional search
+        """
+        try:
+            # Build base query - exclude soft deleted
+            base_query = select(Translation).where(Translation.is_deleted == False)
+            
+            # Add search filter
+            if search:
+                search_filter = (
+                    Translation.keyword.ilike(f"%{search}%") |
+                    Translation.en.ilike(f"%{search}%") |
+                    Translation.es.ilike(f"%{search}%")
+                )
+                base_query = base_query.where(search_filter)
+            
+            # Get total count
+            count_query = select(func.count()).select_from(base_query.subquery())
+            total_result = await db.execute(count_query)
+            total = total_result.scalar()
+            
+            # Get paginated results
+            offset = (page - 1) * per_page
+            translations_query = (
+                base_query
+                .order_by(desc(Translation.created_at))
+                .offset(offset)
+                .limit(per_page)
+            )
+            
+            translations_result = await db.execute(translations_query)
+            translations = translations_result.scalars().all()
+            
+            return translations, total
+            
+        except Exception as e:
+            logger.error(f"Error getting translations list: {e}")
+            return [], 0
+    
+    @staticmethod
+    async def get_translation_by_id(
+        db: AsyncSession,
+        translation_id: int
+    ) -> Optional[Translation]:
+        """
+        Get translation by ID
+        """
+        try:
+            result = await db.execute(
+                select(Translation).where(
+                    (Translation.id == translation_id) &
+                    (Translation.is_deleted == False)
+                )
+            )
+            return result.scalar_one_or_none()
+        except Exception as e:
+            logger.error(f"Error getting translation by ID: {e}")
+            return None
+    
+    @staticmethod
+    async def update_translation(
+        db: AsyncSession,
+        translation_id: int,
+        translation_data: TranslationUpdateRequest,
+        admin_user_id: int
+    ) -> Tuple[bool, Optional[Translation], str]:
+        """
+        Update a translation
+        Returns:
+            Tuple[bool, Optional[Translation], str]: (success, translation, message)
+        """
+        try:
+            # Get translation
+            translation = await AdminService.get_translation_by_id(db, translation_id)
+            if not translation:
+                return False, None, "Translation not found"
+            
+            # Check if new keyword already exists (if keyword is being changed)
+            if translation_data.keyword and translation_data.keyword != translation.keyword:
+                existing_translation = await db.execute(
+                    select(Translation).where(
+                        (Translation.keyword == translation_data.keyword) &
+                        (Translation.is_deleted == False) &
+                        (Translation.id != translation_id)
+                    )
+                )
+                if existing_translation.scalar_one_or_none():
+                    return False, None, "Translation with this keyword already exists"
+            
+            # Update fields
+            if translation_data.keyword is not None:
+                translation.keyword = translation_data.keyword
+            if translation_data.en is not None:
+                translation.en = translation_data.en
+            if translation_data.es is not None:
+                translation.es = translation_data.es
+            if translation_data.is_deletable is not None:
+                translation.is_deletable = translation_data.is_deletable
+            
+            # Update the updated_at timestamp
+            translation.updated_at = datetime.utcnow()
+            
+            await db.commit()
+            await db.refresh(translation)
+            
+            # Log activity
+            await AdminService.log_admin_activity(
+                db, admin_user_id, "UPDATE_TRANSLATION",
+                details={"translation_id": translation_id}
+            )
+            
+            return True, translation, "Translation updated successfully"
+            
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Error updating translation: {e}")
+            return False, None, f"Error updating translation: {str(e)}"
+    
+    @staticmethod
+    async def delete_translation(
+        db: AsyncSession,
+        translation_id: int,
+        admin_user_id: int
+    ) -> Tuple[bool, str]:
+        """
+        Soft delete a translation
+        Returns:
+            Tuple[bool, str]: (success, message)
+        """
+        try:
+            # Get translation
+            translation = await AdminService.get_translation_by_id(db, translation_id)
+            if not translation:
+                return False, "Translation not found"
+            
+            # Check if translation is deletable
+            if not translation.is_deletable:
+                return False, "This translation cannot be deleted"
+            
+            # Soft delete
+            translation.is_deleted = True
+            
+            await db.commit()
+            
+            # Log activity
+            await AdminService.log_admin_activity(
+                db, admin_user_id, "DELETE_TRANSLATION",
+                details={"translation_id": translation_id}
+            )
+            
+            return True, "Translation deleted successfully"
+            
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Error deleting translation: {e}")
+            return False, f"Error deleting translation: {str(e)}"
