@@ -524,7 +524,7 @@ async def delete_me(
     logger.info('User account deleted (soft delete).')
     return api_response(
         success=True,
-        message="User account deleted (soft delete).",
+        message="User account deleted.",
         data={"user_id": current_user.id}
     )
 
