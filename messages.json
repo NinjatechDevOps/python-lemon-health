@@ -1356,5 +1356,95 @@
     "keyword": "headerChangeLanguage",
     "en": "Change Language",
     "es": "Cambiar idioma"
+  },
+  {
+    "keyword": "profile_not_found",
+    "en": "Profile not found",
+    "es": "Perfil no encontrado"
+  },
+  {
+    "keyword": "profile_not_found_default",
+    "en": "No profile found. Returning default profile.",
+    "es": "No se encontró perfil. Devolviendo perfil predeterminado."
+  },
+  {
+    "keyword": "profile_fetched_successfully",
+    "en": "Profile fetched successfully",
+    "es": "Perfil obtenido exitosamente"
+  },
+  {
+    "keyword": "profile_created_successfully",
+    "en": "Profile created successfully",
+    "es": "Perfil creado exitosamente"
+  },
+  {
+    "keyword": "profile_updated_successfully",
+    "en": "Profile updated successfully",
+    "es": "Perfil actualizado exitosamente"
+  },
+  {
+    "keyword": "profile_deleted_successfully",
+    "en": "Profile deleted successfully",
+    "es": "Perfil eliminado exitosamente"
+  },
+  {
+    "keyword": "profile_picture_updated_successfully",
+    "en": "Profile picture updated successfully",
+    "es": "Foto de perfil actualizada exitosamente"
+  },
+  {
+    "keyword": "profile_picture_added_successfully",
+    "en": "Profile picture added successfully",
+    "es": "Foto de perfil añadida exitosamente"
+  },
+  {
+    "keyword": "invalid_profile_data",
+    "en": "Invalid profile data",
+    "es": "Datos de perfil inválidos"
+  },
+  {
+    "keyword": "file_type_not_allowed",
+    "en": "File type not allowed. Allowed types: {allowed_types}",
+    "es": "Tipo de archivo no permitido. Tipos permitidos: {allowed_types}"
+  },
+  {
+    "keyword": "error_saving_file",
+    "en": "Error saving file",
+    "es": "Error al guardar el archivo"
+  },
+  {
+    "keyword": "internal_server_error",
+    "en": "Internal server error",
+    "es": "Error interno del servidor"
+  },
+  {
+    "keyword": "weight_range_kg_error",
+    "en": "Weight must be between 20 and 500 kg",
+    "es": "El peso debe estar entre 20 y 500 kg"
+  },
+  {
+    "keyword": "weight_range_lbs_error",
+    "en": "Weight must be between 44.1 and 1102.3 lbs",
+    "es": "El peso debe estar entre 44.1 y 1102.3 lbs"
+  },
+  {
+    "keyword": "height_unit_error",
+    "en": "Height unit must be either \"cm\" or \"ft/in\"",
+    "es": "La unidad de altura debe ser \"cm\" o \"ft/in\""
+  },
+  {
+    "keyword": "weight_unit_error",
+    "en": "Weight unit must be either \"kg\" or \"lbs\"",
+    "es": "La unidad de peso debe ser \"kg\" o \"lbs\""
+  },
+  {
+    "keyword": "gender_error",
+    "en": "Gender must be either \"Male\", \"Female\", or \"Other\"",
+    "es": "El género debe ser \"Male\", \"Female\" u \"Other\""
+  },
+  {
+    "keyword": "profile_picture_url_error",
+    "en": "Invalid profile picture URL format",
+    "es": "Formato de URL de foto de perfil inválido"
   }
 ]

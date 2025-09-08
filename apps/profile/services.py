@@ -66,7 +66,7 @@ class ProfileService:
         """
         # Validate file type
         if file.content_type not in settings.ALLOWED_IMAGE_TYPES:
-            return False, f"File type not allowed. Allowed types: {', '.join(settings.ALLOWED_IMAGE_TYPES)}"
+            return False, "file_type_not_allowed"
         
         # Generate unique filename
         file_ext = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
@@ -82,7 +82,7 @@ class ProfileService:
                 shutil.copyfileobj(file.file, buffer)
             return True, file_url
         except Exception as e:
-            return False, f"Error saving file: {str(e)}"
+            return False, "error_saving_file"
     
     @staticmethod
     async def update_profile_picture(
@@ -122,9 +122,9 @@ class ProfileService:
             profile.profile_picture_url = result
             await db.commit()
             await db.refresh(profile)
-            return True, "Profile picture updated successfully", profile
+            return True, "profile_picture_updated_successfully", profile
         
         # Create new profile with picture
         profile_data = ProfileCreate(profile_picture_url=result)
         profile = await ProfileService.create_profile(db, profile_data, user_id)
-        return True, "Profile picture added successfully", profile 
+        return True, "profile_picture_added_successfully", profile 
