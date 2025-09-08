@@ -1,0 +1,787 @@
+[
+  {
+    "keyword": "user_already_exists",
+    "en": "Looks like you already have an account. Please log in.",
+    "es": "Parece que ya tienes una cuenta. Por favor, inicia sesión."
+  },
+  {
+    "keyword": "email_already_exists",
+    "en": "User with this email already exists",
+    "es": "Ya existe un usuario con este correo electrónico"
+  },
+  {
+    "keyword": "user_registered_successfully",
+    "en": "User registered successfully. Please verify your mobile number.",
+    "es": "Usuario registrado exitosamente. Por favor, verifica tu número de móvil."
+  },
+  {
+    "keyword": "verification_code_not_sent",
+    "en": "Verification code could not be sent. Please use the resend option.",
+    "es": "No se pudo enviar el código de verificación. Por favor, usa la opción de reenvío."
+  },
+  {
+    "keyword": "user_not_registered",
+    "en": "You're not registered yet. Please sign up to continue.",
+    "es": "Aún no estás registrado. Por favor, regístrate para continuar."
+  },
+  {
+    "keyword": "account_suspended",
+    "en": "We've suspended your account for violating our Terms of Use. If you believe this is a mistake, please contact us at info@lemonclinic.es or via WhatsApp at +34 665 903 865.",
+    "es": "Hemos suspendido tu cuenta por violar nuestros Términos de Uso. Si crees que es un error, por favor contáctanos en info@lemonclinic.es o vía WhatsApp al +34 665 903 865."
+  },
+  {
+    "keyword": "admin_login_blocked",
+    "en": "Admin users cannot access the mobile application. Please use the admin panel instead.",
+    "es": "Los usuarios administradores no pueden acceder a la aplicación móvil. Por favor, usa el panel de administración en su lugar."
+  },
+  {
+    "keyword": "incorrect_password",
+    "en": "Incorrect password. Please check your password and try again.",
+    "es": "Contraseña incorrecta. Por favor, verifica tu contraseña e inténtalo de nuevo."
+  },
+  {
+    "keyword": "mobile_not_verified",
+    "en": "Mobile number not verified. Please verify your mobile number first.",
+    "es": "Número de móvil no verificado. Por favor, verifica tu número de móvil primero."
+  },
+  {
+    "keyword": "login_successful",
+    "en": "Login successful",
+    "es": "Inicio de sesión exitoso"
+  },
+  {
+    "keyword": "user_not_found",
+    "en": "User not found",
+    "es": "Usuario no encontrado"
+  },
+  {
+    "keyword": "invalid_verification_type",
+    "en": "Invalid verification type",
+    "es": "Tipo de verificación inválido"
+  },
+  {
+    "keyword": "verification_successful",
+    "en": "Verification successful",
+    "es": "Verificación exitosa"
+  },
+  {
+    "keyword": "password_reset_verification_successful",
+    "en": "Password reset verification successful. You can now reset your password.",
+    "es": "Verificación de restablecimiento de contraseña exitosa. Ahora puedes restablecer tu contraseña."
+  },
+  {
+    "keyword": "user_already_verified",
+    "en": "User is already verified",
+    "es": "El usuario ya está verificado"
+  },
+  {
+    "keyword": "verification_code_sent",
+    "en": "Verification code request processed",
+    "es": "Solicitud de código de verificación procesada"
+  },
+  {
+    "keyword": "password_reset_request_processed",
+    "en": "Password reset request processed",
+    "es": "Solicitud de restablecimiento de contraseña procesada"
+  },
+  {
+    "keyword": "password_reset_successfully",
+    "en": "Password reset successfully",
+    "es": "Contraseña restablecida exitosamente"
+  },
+  {
+    "keyword": "token_refreshed_successfully",
+    "en": "Token refreshed successfully",
+    "es": "Token actualizado exitosamente"
+  },
+  {
+    "keyword": "invalid_token_type",
+    "en": "Invalid token type",
+    "es": "Tipo de token inválido"
+  },
+  {
+    "keyword": "invalid_token",
+    "en": "Invalid token",
+    "es": "Token inválido"
+  },
+  {
+    "keyword": "inactive_user",
+    "en": "Inactive user",
+    "es": "Usuario inactivo"
+  },
+  {
+    "keyword": "invalid_refresh_token",
+    "en": "Invalid refresh token",
+    "es": "Token de actualización inválido"
+  },
+  {
+    "keyword": "incorrect_current_password",
+    "en": "Incorrect current password",
+    "es": "Contraseña actual incorrecta"
+  },
+  {
+    "keyword": "password_changed_successfully",
+    "en": "Password changed successfully",
+    "es": "Contraseña cambiada exitosamente"
+  },
+  {
+    "keyword": "failed_to_logout",
+    "en": "Failed to logout",
+    "es": "Error al cerrar sesión"
+  },
+  {
+    "keyword": "logged_out_successfully",
+    "en": "Successfully logged out",
+    "es": "Sesión cerrada exitosamente"
+  },
+  {
+    "keyword": "user_already_inactive",
+    "en": "User is already inactive.",
+    "es": "El usuario ya está inactivo."
+  },
+  {
+    "keyword": "account_deleted_soft",
+    "en": "User account deleted (soft delete).",
+    "es": "Cuenta de usuario eliminada (eliminación suave)."
+  },
+  {
+    "keyword": "unsupported_language",
+    "en": "Unsupported language. Supported languages: en, es",
+    "es": "Idioma no soportado. Idiomas soportados: en, es"
+  },
+  {
+    "keyword": "translations_fetched_successfully",
+    "en": "Translations fetched successfully",
+    "es": "Traducciones obtenidas exitosamente"
+  },
+  {
+    "keyword": "invalid_user_data",
+    "en": "Invalid user data",
+    "es": "Datos de usuario inválidos"
+  },
+  {
+    "keyword": "invalid_token_data",
+    "en": "Invalid token data",
+    "es": "Datos de token inválidos"
+  },
+  {
+    "keyword": "required_field_missing",
+    "en": "Required field is missing",
+    "es": "Falta un campo requerido"
+  },
+  {
+    "keyword": "invalid_email_format",
+    "en": "Invalid email format",
+    "es": "Formato de correo electrónico inválido"
+  },
+  {
+    "keyword": "password_too_short",
+    "en": "Password must be at least 8 characters long",
+    "es": "La contraseña debe tener al menos 8 caracteres"
+  },
+  {
+    "keyword": "invalid_mobile_number",
+    "en": "Invalid mobile number format",
+    "es": "Formato de número de móvil inválido"
+  },
+  {
+    "keyword": "invalid_country_code",
+    "en": "Invalid country code",
+    "es": "Código de país inválido"
+  },
+  {
+    "keyword": "verification_code_expired",
+    "en": "Verification code has expired",
+    "es": "El código de verificación ha expirado"
+  },
+  {
+    "keyword": "verification_code_invalid",
+    "en": "Invalid verification code",
+    "es": "Código de verificación inválido"
+  },
+  {
+    "keyword": "too_many_attempts",
+    "en": "Too many verification attempts. Please try again later",
+    "es": "Demasiados intentos de verificación. Por favor, inténtalo más tarde"
+  },
+  {
+    "keyword": "network_error",
+    "en": "Network error. Please check your connection and try again",
+    "es": "Error de red. Por favor, verifica tu conexión e inténtalo de nuevo"
+  },
+  {
+    "keyword": "server_error",
+    "en": "Internal server error. Please try again later",
+    "es": "Error interno del servidor. Por favor, inténtalo más tarde"
+  },
+  {
+    "keyword": "database_error",
+    "en": "Database error occurred",
+    "es": "Ocurrió un error en la base de datos"
+  },
+  {
+    "keyword": "validation_error",
+    "en": "Validation error occurred",
+    "es": "Ocurrió un error de validación"
+  },
+  {
+    "keyword": "unauthorized_access",
+    "en": "Unauthorized access",
+    "es": "Acceso no autorizado"
+  },
+  {
+    "keyword": "forbidden_access",
+    "en": "Access forbidden",
+    "es": "Acceso prohibido"
+  },
+  {
+    "keyword": "resource_not_found",
+    "en": "Resource not found",
+    "es": "Recurso no encontrado"
+  },
+  {
+    "keyword": "method_not_allowed",
+    "en": "Method not allowed",
+    "es": "Método no permitido"
+  },
+  {
+    "keyword": "request_timeout",
+    "en": "Request timeout",
+    "es": "Tiempo de espera de la solicitud agotado"
+  },
+  {
+    "keyword": "btnLogin",
+    "en": "Login",
+    "es": "Iniciar sesión"
+  },
+  {
+    "keyword": "btnSignUp",
+    "en": "Sign Up",
+    "es": "Registrarse"
+  },
+  {
+    "keyword": "btnSubmit",
+    "en": "Submit",
+    "es": "Enviar"
+  },
+  {
+    "keyword": "btnUpdate",
+    "en": "Update",
+    "es": "Actualizar"
+  },
+  {
+    "keyword": "errorEmptyFirstName",
+    "en": "Please Enter First Name",
+    "es": "Por favor ingresa el nombre"
+  },
+  {
+    "keyword": "errorEmptyLastName",
+    "en": "Please Enter Last Name",
+    "es": "Por favor ingresa el apellido"
+  },
+  {
+    "keyword": "errorEmptyMobileNumber",
+    "en": "Please Enter Mobile Number",
+    "es": "Por favor ingresa el número de móvil"
+  },
+  {
+    "keyword": "errorInvalidMobileNumber",
+    "en": "Please Enter Valid Mobile Number",
+    "es": "Por favor ingresa un número de móvil válido"
+  },
+  {
+    "keyword": "errorEmptyPassword",
+    "en": "Please Enter Password",
+    "es": "Por favor ingresa la contraseña"
+  },
+  {
+    "keyword": "errorEmptyConfirmPassword",
+    "en": "Please Enter Confirm Password",
+    "es": "Por favor confirma la contraseña"
+  },
+  {
+    "keyword": "errorPasswordNotMatch",
+    "en": "Confirm Password Does Not Match",
+    "es": "La confirmación de contraseña no coincide"
+  },
+  {
+    "keyword": "placeHolderSearchCountry",
+    "en": "Search By Country",
+    "es": "Buscar por país"
+  },
+  {
+    "keyword": "placeHolderChat",
+    "en": "Ask anything...",
+    "es": "Pregunta cualquier cosa..."
+  },
+  {
+    "keyword": "placeHolderNumber",
+    "en": "Enter Mobile Number",
+    "es": "Ingresa el número de móvil"
+  },
+  {
+    "keyword": "placeHolderPassword",
+    "en": "Enter Password",
+    "es": "Ingresa la contraseña"
+  },
+  {
+    "keyword": "placeHolderFirstName",
+    "en": "Enter First Name",
+    "es": "Ingresa el nombre"
+  },
+  {
+    "keyword": "placeHolderLastName",
+    "en": "Enter Last Name",
+    "es": "Ingresa el apellido"
+  },
+  {
+    "keyword": "placeHolderConfirmPassword",
+    "en": "Enter Confirm Password",
+    "es": "Confirma la contraseña"
+  },
+  {
+    "keyword": "placeHolderDob",
+    "en": "DD/MM/YYYY",
+    "es": "DD/MM/YYYY"
+  },
+  {
+    "keyword": "placeHolderHeightFt",
+    "en": "Feet",
+    "es": "Pies"
+  },
+  {
+    "keyword": "placeHolderHeightInches",
+    "en": "Inches",
+    "es": "Pulgadas"
+  },
+  {
+    "keyword": "placeHolderHeightCentimeter",
+    "en": "Height cm",
+    "es": "Altura cm"
+  },
+  {
+    "keyword": "placeHolderWeight",
+    "en": "Enter Weight In Kg",
+    "es": "Ingresa el peso en Kg"
+  },
+  {
+    "keyword": "placeHolderSearch",
+    "en": "Search",
+    "es": "Buscar"
+  },
+  {
+    "keyword": "placeHolderCurrentPassword",
+    "en": "Enter Current Password",
+    "es": "Ingresa la contraseña actual"
+  },
+  {
+    "keyword": "placeHolderNewPassword",
+    "en": "Enter New Password",
+    "es": "Ingresa la nueva contraseña"
+  },
+  {
+    "keyword": "headerMyAccount",
+    "en": "My Account",
+    "es": "Mi cuenta"
+  },
+  {
+    "keyword": "headerEditProfile",
+    "en": "Edit Profile",
+    "es": "Editar perfil"
+  },
+  {
+    "keyword": "headerDocuments",
+    "en": "Documents",
+    "es": "Documentos"
+  },
+  {
+    "keyword": "headerChangePassword",
+    "en": "Change Password",
+    "es": "Cambiar contraseña"
+  },
+  {
+    "keyword": "option_bookings",
+    "en": "Bookings",
+    "es": "Reservas"
+  },
+  {
+    "keyword": "option_shop",
+    "en": "Shop",
+    "es": "Tienda"
+  },
+  {
+    "keyword": "option_documents",
+    "en": "Documents",
+    "es": "Documentos"
+  },
+  {
+    "keyword": "option_nutrition",
+    "en": "Nutrition",
+    "es": "Nutrición"
+  },
+  {
+    "keyword": "option_exercise",
+    "en": "Exercise",
+    "es": "Ejercicio"
+  },
+  {
+    "keyword": "option_perscriptions",
+    "en": "Prescriptions",
+    "es": "Recetas"
+  },
+  {
+    "keyword": "option_playlist",
+    "en": "Playlist",
+    "es": "Lista de reproducción"
+  },
+  {
+    "keyword": "option_playlist_desc",
+    "en": "Build a playlist with songs",
+    "es": "Crea una lista de reproducción con canciones"
+  },
+  {
+    "keyword": "option_artist",
+    "en": "Favorite Artist",
+    "es": "Artista favorito"
+  },
+  {
+    "keyword": "option_artist_desc",
+    "en": "Build a list of your favorite artists",
+    "es": "Crea una lista de tus artistas favoritos"
+  },
+  {
+    "keyword": "option_upload",
+    "en": "Upload Art & Music",
+    "es": "Subir arte y música"
+  },
+  {
+    "keyword": "option_upload_desc",
+    "en": "Upload for music and Art",
+    "es": "Subir música y arte"
+  },
+  {
+    "keyword": "option_delete",
+    "en": "Delete",
+    "es": "Eliminar"
+  },
+  {
+    "keyword": "option_edit",
+    "en": "Edit Or Update",
+    "es": "Editar o actualizar"
+  },
+  {
+    "keyword": "option_remove_from_this_playlist",
+    "en": "Remove from this playlist",
+    "es": "Eliminar de esta lista de reproducción"
+  },
+  {
+    "keyword": "option_go_to_artist",
+    "en": "Go artist profile",
+    "es": "Ir al perfil del artista"
+  },
+  {
+    "keyword": "option_go_to_album",
+    "en": "Go to album detail",
+    "es": "Ir a los detalles del álbum"
+  },
+  {
+    "keyword": "option_add_show",
+    "en": "Add Show",
+    "es": "Agregar espectáculo"
+  },
+  {
+    "keyword": "option_add_show_desc",
+    "en": "Add Upcoming shows details",
+    "es": "Agregar detalles de próximos espectáculos"
+  },
+  {
+    "keyword": "option_camera",
+    "en": "Camera",
+    "es": "Cámara"
+  },
+  {
+    "keyword": "option_gallery",
+    "en": "Gallery",
+    "es": "Galería"
+  },
+  {
+    "keyword": "passwordChanged",
+    "en": "Password has been successfully changed",
+    "es": "La contraseña ha sido cambiada exitosamente"
+  },
+  {
+    "keyword": "emailVerfied",
+    "en": "Account has been successfully created",
+    "es": "La cuenta ha sido creada exitosamente"
+  },
+  {
+    "keyword": "emailVerfiedDesc",
+    "en": "Your email has been successfully verified. You can now enjoy all the features of our app.",
+    "es": "Tu correo electrónico ha sido verificado exitosamente. Ahora puedes disfrutar de todas las funciones de nuestra app."
+  },
+  {
+    "keyword": "welcomeToApp",
+    "en": "Welcome to {0}!",
+    "es": "¡Bienvenido a {0}!"
+  },
+  {
+    "keyword": "welcomeDesc",
+    "en": "Your health, simplified. From nutrition and fitness to doctor appointments, medical reports, prescriptions and online shopping with free delivery — ",
+    "es": "Tu salud, simplificada. Desde nutrición y fitness hasta citas médicas, reportes médicos, recetas y compras en línea con entrega gratuita — "
+  },
+  {
+    "keyword": "poweredBy",
+    "en": "everything you need in one place. Get started for free!",
+    "es": "todo lo que necesitas en un solo lugar. ¡Comienza gratis!"
+  },
+  {
+    "keyword": "letsLogin",
+    "en": "Let's log you in!",
+    "es": "¡Vamos a iniciar sesión!"
+  },
+  {
+    "keyword": "pleaseLogin",
+    "en": "Please Login to continue to your account",
+    "es": "Por favor inicia sesión para continuar con tu cuenta"
+  },
+  {
+    "keyword": "mobileNumber",
+    "en": "Mobile Number",
+    "es": "Número de móvil"
+  },
+  {
+    "keyword": "password",
+    "en": "Password",
+    "es": "Contraseña"
+  },
+  {
+    "keyword": "forgotPassword",
+    "en": "Forgot Password?",
+    "es": "¿Olvidaste tu contraseña?"
+  },
+  {
+    "keyword": "dontHaveAccount",
+    "en": "Don't have an account? ",
+    "es": "¿No tienes una cuenta? "
+  },
+  {
+    "keyword": "signUp",
+    "en": "Sign Up",
+    "es": "Registrarse"
+  },
+  {
+    "keyword": "letsCreateAccount",
+    "en": "Let's Create your account to get started",
+    "es": "Vamos a crear tu cuenta para comenzar"
+  },
+  {
+    "keyword": "firstName",
+    "en": "First Name",
+    "es": "Nombre"
+  },
+  {
+    "keyword": "lastName",
+    "en": "Last Name",
+    "es": "Apellido"
+  },
+  {
+    "keyword": "confirmPassword",
+    "en": "Confirm Password",
+    "es": "Confirmar contraseña"
+  },
+  {
+    "keyword": "iAgree",
+    "en": "I agree with the ",
+    "es": "Estoy de acuerdo con los "
+  },
+  {
+    "keyword": "termsAndCondition",
+    "en": "Terms & Conditions",
+    "es": "Términos y condiciones"
+  },
+  {
+    "keyword": "and",
+    "en": " and ",
+    "es": " y "
+  },
+  {
+    "keyword": "privacyPolicy",
+    "en": "Privacy Policy",
+    "es": "Política de privacidad"
+  },
+  {
+    "keyword": "alreadyHaveAccount",
+    "en": "Already have an account? ",
+    "es": "¿Ya tienes una cuenta? "
+  },
+  {
+    "keyword": "login",
+    "en": "Login",
+    "es": "Iniciar sesión"
+  },
+  {
+    "keyword": "verifyCode",
+    "en": "Verify Code",
+    "es": "Verificar código"
+  },
+  {
+    "keyword": "codeDesc",
+    "en": "An authentication code has been sent to your mobile number.",
+    "es": "Se ha enviado un código de autenticación a tu número de móvil."
+  },
+  {
+    "keyword": "didNotReceiveCode",
+    "en": "Didn't receive a code?",
+    "es": "¿No recibiste un código?"
+  },
+  {
+    "keyword": "timer",
+    "en": " ({0})s ",
+    "es": " ({0})s "
+  },
+  {
+    "keyword": "resendCode",
+    "en": "Resend",
+    "es": "Reenviar"
+  },
+  {
+    "keyword": "forgotPassWordDesc",
+    "en": "Enter your Mobile number and we will send a verification code to reset your password.",
+    "es": "Ingresa tu número de móvil y te enviaremos un código de verificación para restablecer tu contraseña."
+  },
+  {
+    "keyword": "name",
+    "en": "Name",
+    "es": "Nombre"
+  },
+  {
+    "keyword": "dob",
+    "en": "Date of Birth",
+    "es": "Fecha de nacimiento"
+  },
+  {
+    "keyword": "heightUnit",
+    "en": "Height Unit",
+    "es": "Unidad de altura"
+  },
+  {
+    "keyword": "weight",
+    "en": "Weight",
+    "es": "Peso"
+  },
+  {
+    "keyword": "gender",
+    "en": "Gender",
+    "es": "Género"
+  },
+  {
+    "keyword": "skip",
+    "en": "Skip",
+    "es": "Omitir"
+  },
+  {
+    "keyword": "male",
+    "en": "Male",
+    "es": "Masculino"
+  },
+  {
+    "keyword": "female",
+    "en": "Female",
+    "es": "Femenino"
+  },
+  {
+    "keyword": "accountInfo",
+    "en": "Account Info",
+    "es": "Información de la cuenta"
+  },
+  {
+    "keyword": "changePassword",
+    "en": "Change Password",
+    "es": "Cambiar contraseña"
+  },
+  {
+    "keyword": "logout",
+    "en": "Logout",
+    "es": "Cerrar sesión"
+  },
+  {
+    "keyword": "changeProfileImage",
+    "en": "Change Profile Picture",
+    "es": "Cambiar foto de perfil"
+  },
+  {
+    "keyword": "height",
+    "en": "Height",
+    "es": "Altura"
+  },
+  {
+    "keyword": "currentPassword",
+    "en": "Current Password",
+    "es": "Contraseña actual"
+  },
+  {
+    "keyword": "newPassword",
+    "en": "New Password",
+    "es": "Nueva contraseña"
+  },
+  {
+    "keyword": "username",
+    "en": "{0} {1}",
+    "es": "{0} {1}"
+  },
+  {
+    "keyword": "userHeight",
+    "en": "{0} {1}",
+    "es": "{0} {1}"
+  },
+  {
+    "keyword": "userWeight",
+    "en": "{0} {1}",
+    "es": "{0} {1}"
+  },
+  {
+    "keyword": "userGender",
+    "en": "{0}",
+    "es": "{0}"
+  },
+  {
+    "keyword": "welcomeUserChat",
+    "en": "Hello {0}!",
+    "es": "¡Hola {0}!"
+  },
+  {
+    "keyword": "welcomeUserChatDesc",
+    "en": "Your Health, Just a Tap Away, Quick access to everything you need.",
+    "es": "Tu salud, a solo un toque de distancia. Acceso rápido a todo lo que necesitas."
+  },
+  {
+    "keyword": "sessionExpired",
+    "en": "Your account has been disabled",
+    "es": "Tu cuenta ha sido deshabilitada"
+  },
+  {
+    "keyword": "sessionExpiredDesc1",
+    "en": "We've suspended your account for violating our Terms of Use. If you believe this is a mistake, please contact us at ",
+    "es": "Hemos suspendido tu cuenta por violar nuestros Términos de Uso. Si crees que es un error, por favor contáctanos en "
+  },
+  {
+    "keyword": "sessionExpiredDesc2",
+    "en": " or via WhatsApp at ",
+    "es": " o vía WhatsApp al "
+  },
+  {
+    "keyword": "accountOnBoarding",
+    "en": "Let's personalize your experience.",
+    "es": "Vamos a personalizar tu experiencia."
+  },
+  {
+    "keyword": "chatHistoryTitle",
+    "en": "Chat History",
+    "es": "Historial de chat"
+  },
+  {
+    "keyword": "goBack",
+    "en": "Go back",
+    "es": "Regresar"
+  }
+]
