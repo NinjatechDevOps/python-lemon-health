@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
+from sqlalchemy.orm import selectinload
 from apps.auth.models import User
 from apps.core.security import get_password_hash, verify_password, create_access_token, create_refresh_token
 from apps.admin_panel.schemas import AdminCreateUserRequest, AdminUpdateUserRequest
@@ -781,8 +782,8 @@ class AdminService:
         Get paginated list of translations with optional search
         """
         try:
-            # Build base query - exclude soft deleted
-            base_query = select(Translation).where(Translation.is_deleted == False)
+            # Build base query - exclude soft deleted and eagerly load creator
+            base_query = select(Translation).options(selectinload(Translation.creator)).where(Translation.is_deleted == False)
             
             # Add search filter
             if search:
@@ -826,7 +827,7 @@ class AdminService:
         """
         try:
             result = await db.execute(
-                select(Translation).where(
+                select(Translation).options(selectinload(Translation.creator)).where(
                     (Translation.id == translation_id) &
                     (Translation.is_deleted == False)
                 )
