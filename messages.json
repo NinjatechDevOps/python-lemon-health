@@ -1446,5 +1446,155 @@
     "keyword": "profile_picture_url_error",
     "en": "Invalid profile picture URL format",
     "es": "Formato de URL de foto de perfil inválido"
+  },
+  {
+    "keyword": "prompts_retrieved_successfully",
+    "en": "Prompts retrieved successfully",
+    "es": "Prompts obtenidos exitosamente"
+  },
+  {
+    "keyword": "error_retrieving_prompts",
+    "en": "Error retrieving prompts",
+    "es": "Error al obtener prompts"
+  },
+  {
+    "keyword": "query_not_related_nutrition_exercise",
+    "en": "Query not related to Nutrition or Exercise",
+    "es": "Consulta no relacionada con Nutrición o Ejercicio"
+  },
+  {
+    "keyword": "error_processing_request",
+    "en": "An error occurred while processing your request",
+    "es": "Ocurrió un error al procesar tu solicitud"
+  },
+  {
+    "keyword": "chat_history_fetched_successfully",
+    "en": "Chat history fetched successfully",
+    "es": "Historial de chat obtenido exitosamente"
+  },
+  {
+    "keyword": "error_fetching_chat_history",
+    "en": "An error occurred while fetching chat history",
+    "es": "Ocurrió un error al obtener el historial de chat"
+  },
+  {
+    "keyword": "chat_history_retrieved_successfully",
+    "en": "Chat history retrieved successfully",
+    "es": "Historial de chat recuperado exitosamente"
+  },
+  {
+    "keyword": "document_uploaded_successfully",
+    "en": "Document uploaded successfully. Analysis in progress.",
+    "es": "Documento cargado exitosamente. Análisis en progreso."
+  },
+  {
+    "keyword": "error_uploading_document",
+    "en": "Error uploading document",
+    "es": "Error al cargar el documento"
+  },
+  {
+    "keyword": "documents_retrieved_successfully",
+    "en": "Documents retrieved successfully",
+    "es": "Documentos obtenidos exitosamente"
+  },
+  {
+    "keyword": "error_retrieving_documents",
+    "en": "Error retrieving documents",
+    "es": "Error al obtener documentos"
+  },
+  {
+    "keyword": "document_not_found",
+    "en": "Document not found",
+    "es": "Documento no encontrado"
+  },
+  {
+    "keyword": "document_analysis_completed",
+    "en": "Document analysis completed successfully",
+    "es": "Análisis del documento completado exitosamente"
+  },
+  {
+    "keyword": "error_analyzing_document",
+    "en": "Error analyzing document",
+    "es": "Error al analizar el documento"
+  },
+  {
+    "keyword": "file_size_exceeds_limit",
+    "en": "File size exceeds maximum allowed size of {max_size}MB",
+    "es": "El tamaño del archivo excede el tamaño máximo permitido de {max_size}MB"
+  },
+  {
+    "keyword": "file_type_not_supported",
+    "en": "File type '{file_type}' is not supported. Only PDF files are allowed.",
+    "es": "El tipo de archivo '{file_type}' no es compatible. Solo se permiten archivos PDF."
+  },
+  {
+    "keyword": "file_not_found_error",
+    "en": "File not found",
+    "es": "Archivo no encontrado"
+  },
+  {
+    "keyword": "unsupported_file_type_error",
+    "en": "Unsupported file type",
+    "es": "Tipo de archivo no compatible"
+  },
+  {
+    "keyword": "error_extracting_text",
+    "en": "Error extracting text from document",
+    "es": "Error al extraer texto del documento"
+  },
+  {
+    "keyword": "error_extracting_pdf",
+    "en": "Error extracting text from PDF",
+    "es": "Error al extraer texto del PDF"
+  },
+  {
+    "keyword": "invalid_conv_id_format",
+    "en": "Invalid conv_id format. Must be a valid UUID.",
+    "es": "Formato de conv_id inválido. Debe ser un UUID válido."
+  },
+  {
+    "keyword": "conversation_not_found",
+    "en": "Conversation not found",
+    "es": "Conversación no encontrada"
+  },
+  {
+    "keyword": "prompt_not_found",
+    "en": "Prompt not found",
+    "es": "Prompt no encontrado"
+  },
+  {
+    "keyword": "prompt_not_allowed",
+    "en": "Prompt type '{prompt_type}' is not allowed. Only {allowed_types} are supported.",
+    "es": "El tipo de prompt '{prompt_type}' no está permitido. Solo se admiten {allowed_types}."
+  },
+  {
+    "keyword": "conversation_not_belong_user",
+    "en": "Conversation does not belong to the current user",
+    "es": "La conversación no pertenece al usuario actual"
+  },
+  {
+    "keyword": "error_creating_conversation",
+    "en": "Error creating conversation",
+    "es": "Error al crear la conversación"
+  },
+  {
+    "keyword": "error_retrieving_prompts_service",
+    "en": "Error retrieving prompts",
+    "es": "Error al obtener prompts"
+  },
+  {
+    "keyword": "error_streaming_response",
+    "en": "Error during streaming response",
+    "es": "Error durante la respuesta en streaming"
+  },
+  {
+    "keyword": "no_prompts_found",
+    "en": "No prompts found in database",
+    "es": "No se encontraron prompts en la base de datos"
+  },
+  {
+    "keyword": "default_prompt_not_found",
+    "en": "Default prompt not found in database",
+    "es": "Prompt predeterminado no encontrado en la base de datos"
   }
 ]

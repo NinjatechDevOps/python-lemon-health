@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Any, Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, Query, UploadFile, File, Header
 from fastapi.responses import  JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -10,6 +10,7 @@ from apps.auth.deps import get_current_mobile_verified_user
 from apps.auth.models import User
 from apps.chat.models import Document
 from apps.chat.models import PromptType
+from apps.auth.services import AuthService
 from apps.chat.schemas import (
     PromptListResponse, BaseResponse, ChatRequest, ChatResponse, ChatHistoryResponse,
     ChatHistoryListResponse, PaginationInfo, DocumentUploadResponse, DocumentResponse,
@@ -31,7 +32,10 @@ document_router = APIRouter(tags=["Documents"])
 
 # Chat Endpoints
 @chat_router.get("/prompts", response_model=BaseResponse[PromptListResponse])
-async def get_prompts(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
+async def get_prompts(
+    db: AsyncSession = Depends(get_db),
+    app_language: str = Header("en", alias="App-Language")
+) -> Dict[str, Any]:
     """
     Get a list of all available prompts from the database.
     This endpoint does not require authentication.
@@ -40,9 +44,13 @@ async def get_prompts(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
     try:
         prompt_list = await ChatService.get_prompts(db)
         logger.info(f"Retrieved {len(prompt_list)} prompts.")
+        # Get translated message
+        message = await AuthService.get_translation_by_keyword(db, "prompts_retrieved_successfully", app_language)
+        if not message:
+            message = AuthService.get_message_from_json("prompts_retrieved_successfully", app_language)
         return {
             "success": True,
-            "message": "Prompts retrieved successfully",
+            "message": message,
             "data": PromptListResponse(prompts=prompt_list)
         }
     except Exception as e:
@@ -51,7 +59,7 @@ async def get_prompts(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
             status_code=500,
             content={
                 "success": False,
-                "message": f"Error retrieving prompts: {str(e)}",
+                "message": await AuthService.get_translation_by_keyword(db, "error_retrieving_prompts", app_language) or AuthService.get_message_from_json("error_retrieving_prompts", app_language),
                 "data": None
             }
         )
@@ -60,7 +68,8 @@ async def get_prompts(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
 async def chat(
     chat_request: ChatRequest,
     current_user: User = Depends(get_current_mobile_verified_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    app_language: str = Header("en", alias="App-Language")
 ):
     """
     Process a user query and return a response from the LLM.
@@ -84,12 +93,15 @@ async def chat(
     except HTTPException as e:
         logger.error(f"HTTPException: {e}")
         # Handle specific HTTP exceptions (like query not related to nutrition/exercise)
-        if e.status_code == 400 and "Query not related to Nutrition or Exercise" in str(e.detail):
+        if e.status_code == 400 and str(e.detail) == "query_not_related_nutrition_exercise":
             # Use LLM to generate denial response
             from apps.chat.prompts import DEFAULT_PROMPT_GUARDRAILS
             from apps.chat.llm_connector import process_query_with_prompt
             
-            guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(user_query=chat_request.user_query)
+            guardrails_prompt = DEFAULT_PROMPT_GUARDRAILS.format(
+                user_query=chat_request.user_query,
+                conversation_history="No previous conversation"  # First message, no history
+            )
             
             denial_response = await process_query_with_prompt(
                 user_message=chat_request.user_query,
@@ -127,7 +139,7 @@ async def chat(
             
             return {
                 "success": True,
-                "message": "Query not related to Nutrition or Exercise",
+                "message": await AuthService.get_translation_by_keyword(db, "query_not_related_nutrition_exercise", app_language) or AuthService.get_message_from_json("query_not_related_nutrition_exercise", app_language),
                 "data": ChatResponse(
                     conv_id=chat_request.conv_id,
                     prompt_id=chat_request.prompt_id,  # Include prompt_id in response
@@ -137,14 +149,23 @@ async def chat(
                 )
             }
             
-        raise
+        # For other HTTPExceptions, translate the error message if it's a keyword
+        detail = str(e.detail)
+        if detail in ["invalid_conv_id_format", "conversation_not_found", "prompt_not_found", 
+                      "default_prompt_not_found", "prompt_not_allowed"]:
+            translated_message = await AuthService.get_translation_by_keyword(db, detail, app_language)
+            if not translated_message:
+                translated_message = AuthService.get_message_from_json(detail, app_language)
+            raise HTTPException(status_code=e.status_code, detail=translated_message)
+        else:
+            raise
     except Exception as e:
         logger.error(f"An error occurred while processing your request: {e}")
         return JSONResponse(
             status_code=500,
             content={
                 "success": False,
-                "message": f"An error occurred while processing your request: {str(e)}",
+                "message": await AuthService.get_translation_by_keyword(db, "error_processing_request", app_language) or AuthService.get_message_from_json("error_processing_request", app_language),
                 "data": None
             }
         )
@@ -153,7 +174,8 @@ async def chat(
 async def get_chat_history(
     conv_id: str, 
     db: AsyncSession = Depends(get_db), 
-    current_user: User = Depends(get_current_mobile_verified_user)
+    current_user: User = Depends(get_current_mobile_verified_user),
+    app_language: str = Header("en", alias="App-Language")
 ):
     """
     Get chat history for a specific conv_id.
@@ -163,18 +185,26 @@ async def get_chat_history(
         chat_history = await ChatService.get_chat_history_by_conv_id(conv_id, current_user, db)
         return {
             "success": True,
-            "message": "Chat history fetched successfully",
+            "message": await AuthService.get_translation_by_keyword(db, "chat_history_fetched_successfully", app_language) or AuthService.get_message_from_json("chat_history_fetched_successfully", app_language),
             "data": chat_history
         }
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        # Translate the error message if it's a keyword
+        detail = str(e.detail)
+        if detail in ["invalid_conv_id_format", "conversation_not_found"]:
+            translated_message = await AuthService.get_translation_by_keyword(db, detail, app_language)
+            if not translated_message:
+                translated_message = AuthService.get_message_from_json(detail, app_language)
+            raise HTTPException(status_code=e.status_code, detail=translated_message)
+        else:
+            raise
     except Exception as e:
         logger.error(f"An error occurred while fetching chat history: {e}")
         return JSONResponse(
             status_code=500,
             content={
                 "success": False,
-                "message": f"An error occurred while fetching chat history: {str(e)}",
+                "message": await AuthService.get_translation_by_keyword(db, "error_fetching_chat_history", app_language) or AuthService.get_message_from_json("error_fetching_chat_history", app_language),
                 "data": None
             }
         )
@@ -186,7 +216,8 @@ async def get_user_chat_history(
     search: Optional[str] = Query(None, description="Search conversations by title or content"),
     prompt_type: Optional[PromptType] = Query(None, description="Filter by prompt type"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_mobile_verified_user)
+    current_user: User = Depends(get_current_mobile_verified_user),
+    app_language: str = Header("en", alias="App-Language")
 ):
     """
     Get all chat history for the current user with pagination.
@@ -205,7 +236,7 @@ async def get_user_chat_history(
         
         return {
             "success": True,
-            "message": "Chat history retrieved successfully",
+            "message": await AuthService.get_translation_by_keyword(db, "chat_history_retrieved_successfully", app_language) or AuthService.get_message_from_json("chat_history_retrieved_successfully", app_language),
             "data": chat_history_list
         }
         
@@ -215,7 +246,7 @@ async def get_user_chat_history(
             status_code=500,
             content={
                 "success": False,
-                "message": f"An error occurred while fetching chat history: {str(e)}",
+                "message": await AuthService.get_translation_by_keyword(db, "error_fetching_chat_history", app_language) or AuthService.get_message_from_json("error_fetching_chat_history", app_language),
                 "data": None
             }
         )
@@ -225,7 +256,8 @@ async def get_user_chat_history(
 async def upload_document(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_mobile_verified_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    app_language: str = Header("en", alias="App-Language")
 ):
     """
     Upload a PDF document for analysis.
@@ -248,7 +280,7 @@ async def upload_document(
         
         return {
             "success": True,
-            "message": "Document uploaded successfully. Analysis in progress.",
+            "message": await AuthService.get_translation_by_keyword(db, "document_uploaded_successfully", app_language) or AuthService.get_message_from_json("document_uploaded_successfully", app_language),
             "data": DocumentUploadResponse(
                 doc_id=document.doc_id,
                 original_filename=document.original_filename,
@@ -261,15 +293,31 @@ async def upload_document(
             )
         }
         
-    except HTTPException:
-        raise
+    except HTTPException as http_exc:
+        # Translate the error message if it's a keyword
+        detail = str(http_exc.detail)
+        if detail in ["file_size_exceeds_limit", "file_type_not_supported"]:
+            translated_message = await AuthService.get_translation_by_keyword(db, detail, app_language)
+            if not translated_message:
+                translated_message = AuthService.get_message_from_json(detail, app_language)
+            # For file_size_exceeds_limit, format with max size
+            if detail == "file_size_exceeds_limit":
+                max_size = DocumentService.MAX_FILE_SIZE // (1024*1024)
+                translated_message = translated_message.format(max_size=max_size)
+            # For file_type_not_supported, format with file type
+            elif detail == "file_type_not_supported":
+                file_extension = file.filename.split('.')[-1].lower() if file.filename else ''
+                translated_message = translated_message.format(file_type=file_extension)
+            raise HTTPException(status_code=http_exc.status_code, detail=translated_message)
+        else:
+            raise
     except Exception as e:
         logger.error(f"Error uploading document: {e}")
         return JSONResponse(
             status_code=500,
             content={
                 "success": False,
-                "message": f"Error uploading document: {str(e)}",
+                "message": await AuthService.get_translation_by_keyword(db, "error_uploading_document", app_language) or AuthService.get_message_from_json("error_uploading_document", app_language),
                 "data": None
             }
         )
@@ -280,7 +328,8 @@ async def get_user_documents(
     per_page: int = Query(20, ge=1, le=100, description="Number of documents per page (max 100)"),
     search: Optional[str] = Query(None, description="Search documents by original filename or LLM-generated filename"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_mobile_verified_user)
+    current_user: User = Depends(get_current_mobile_verified_user),
+    app_language: str = Header("en", alias="App-Language")
 ):
     """
     Get all documents uploaded by the current user with pagination.
@@ -333,7 +382,7 @@ async def get_user_documents(
         
         return {
             "success": True,
-            "message": "Documents retrieved successfully",
+            "message": await AuthService.get_translation_by_keyword(db, "documents_retrieved_successfully", app_language) or AuthService.get_message_from_json("documents_retrieved_successfully", app_language),
             "data": DocumentListResponse(
                 documents=document_items,
                 pagination=pagination
@@ -346,7 +395,7 @@ async def get_user_documents(
             status_code=500,
             content={
                 "success": False,
-                "message": f"Error retrieving documents: {str(e)}",
+                "message": await AuthService.get_translation_by_keyword(db, "error_retrieving_documents", app_language) or AuthService.get_message_from_json("error_retrieving_documents", app_language),
                 "data": None
             }
         )
@@ -355,7 +404,8 @@ async def get_user_documents(
 async def analyze_document(
     request: DocumentAnalysisRequest,
     current_user: User = Depends(get_current_mobile_verified_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    app_language: str = Header("en", alias="App-Language")
 ):
     """
     Manually trigger analysis for a specific document.
@@ -373,7 +423,7 @@ async def analyze_document(
                 status_code=404,
                 content={
                     "success": False,
-                    "message": f"Document not found: {request.doc_id}",
+                    "message": await AuthService.get_translation_by_keyword(db, "document_not_found", app_language) or AuthService.get_message_from_json("document_not_found", app_language),
                     "data": None
                 }
             )
@@ -383,7 +433,7 @@ async def analyze_document(
         
         return {
             "success": True,
-            "message": "Document analysis completed successfully",
+            "message": await AuthService.get_translation_by_keyword(db, "document_analysis_completed", app_language) or AuthService.get_message_from_json("document_analysis_completed", app_language),
             "data": {
                 "doc_id": document.doc_id,
                 "analysis_id": analysis.analysis_id,
@@ -398,7 +448,7 @@ async def analyze_document(
             status_code=500,
             content={
                 "success": False,
-                "message": f"Error analyzing document: {str(e)}",
+                "message": await AuthService.get_translation_by_keyword(db, "error_analyzing_document", app_language) or AuthService.get_message_from_json("error_analyzing_document", app_language),
                 "data": None
             }
         )

@@ -122,7 +122,7 @@ class ChatService:
         if missing_prompts:
             raise HTTPException(
                 status_code=500,
-                detail=f"Default prompts not found: {missing_prompts}. Available prompts: {[p.prompt_type for p in prompts]}"
+                detail="default_prompt_not_found"
             )
         
         # Return the first two prompts (nutrition and exercise for now)
@@ -233,7 +233,7 @@ class ChatService:
             ]
             return prompt_list
         except Exception as e:
-            raise Exception(f"Error retrieving prompts: {str(e)}")
+            raise Exception("error_retrieving_prompts_service")
     
     @staticmethod
     async def validate_conversation_id(conv_id: str) -> None:
@@ -243,7 +243,7 @@ class ChatService:
         except ValueError:
             raise HTTPException(
                 status_code=400,
-                detail="Invalid conv_id format. Must be a valid UUID."
+                detail="invalid_conv_id_format"
             )
     
     @staticmethod
@@ -272,7 +272,7 @@ class ChatService:
                     # Query is not related to nutrition/exercise, create denial response
                     raise HTTPException(
                         status_code=400,
-                        detail="Query not related to Nutrition or Exercise. Please ask nutrition or exercise related questions."
+                        detail="query_not_related_nutrition_exercise"
                     )
                 
                 # Create default conversation
@@ -293,7 +293,7 @@ class ChatService:
             if not prompt:
                 raise HTTPException(
                     status_code=400, 
-                    detail=f"Prompt '{prompt_id}' not found. Available prompts: {[p.value for p in PromptType]}"
+                    detail="prompt_not_found"
                 )
             logger.info(f"Found the prompt {prompt.name}")
             # Set title to first 60 chars of user_query
@@ -933,7 +933,7 @@ class ChatService:
         except ValueError:
             raise HTTPException(
                 status_code=400,
-                detail="Invalid conv_id format. Must be a valid UUID."
+                detail="invalid_conv_id_format"
             )
         
         # Get conversation
@@ -947,7 +947,7 @@ class ChatService:
         if not conversation:
             raise HTTPException(
                 status_code=404,
-                detail=f"No conversation found for conv_id: {conv_id}"
+                detail="conversation_not_found"
             )
         
         # Get messages
