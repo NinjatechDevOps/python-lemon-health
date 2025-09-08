@@ -1308,5 +1308,53 @@
     "keyword": "document_pages_exceeded",
     "en": "Document exceeds maximum number of pages",
     "es": "El documento excede el número máximo de páginas"
+  },
+    {
+    "keyword": "mobile_number_count_error",
+    "en": "Mobile number must be between 7 and 15 digits",
+    "es": "El número de teléfono debe tener entre 7 y 15 dígitos."
+  },   
+   {
+    "keyword": "country_code_specification_error",
+    "en": "Country code must start with + followed by 1-4 digits",
+    "es": "El código de país debe comenzar con + seguido de 1 a 4 dígitos."
+  },  
+   {
+    "keyword": "password_count_error",
+    "en": "Password must be 8-16 characters",
+    "es": "La contraseña debe tener entre 8 y 16 caracteres."
+  },   {
+    "keyword": "mobile_digit_error",
+    "en": "Mobile number must contain digits",
+    "es": "El número de teléfono debe contener solo dígitos."
+  },  {
+    "keyword": "verification_type_error",
+    "en": "Type of verification: mobile_verification or password_reset",
+    "es": "Tipo de verificación: verificación_móvil o restablecimiento_de_contraseña."
+  },
+  {
+    "keyword": "languageEn",
+    "en": "🇬🇧 English",
+    "es": "🇬🇧 Inglés"
+  },
+  {
+    "keyword": "languageEs",
+    "en": "🇪🇸 Spanish",
+    "es": "🇪🇸 Español"
+  },
+  {
+    "keyword": "changeLangauge",
+    "en": "Change Language",
+    "es": "Cambiar idioma"
+  },
+  {
+    "keyword": "btnChangeLanguage",
+    "en": "Change Language",
+    "es": "Cambiar idioma"
+  },
+  {
+    "keyword": "headerChangeLanguage",
+    "en": "Change Language",
+    "es": "Cambiar idioma"
   }
 ]

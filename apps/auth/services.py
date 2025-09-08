@@ -8,6 +8,7 @@ from typing import Optional, Tuple, Any, List, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import JWTError
+from sqlalchemy.orm import selectinload
 
 from apps.core.config import settings
 from apps.core.security import create_access_token, create_refresh_token, get_password_hash, verify_password, verify_token
@@ -165,20 +166,20 @@ class AuthService:
         
         # Check if user exists
         if not user:
-            return False, "You're not registered yet. Please sign up to continue."
+            return False, "user_not_registered"
         
         # Check if user is active
         if not user.is_active:
             # return False, "Your account has been deactivated. Please contact support for assistance."
-            return False, "We’ve suspended your account for violating our Terms of Use. If you believe this is a mistake, please contact us at info@lemonclinic.es or via WhatsApp at +34 665 903 865."
+            return False, "account_suspended"
         
         # Check if user is admin - prevent admin users from logging into mobile app
         if user.is_admin:
-            return False, "Admin users cannot access the mobile application. Please use the admin panel instead."
+            return False, "admin_login_blocked"
         
         # Check if password is correct
         if not verify_password(password, user.hashed_password):
-            return False, "Incorrect password. Please check your password and try again."
+            return False, "incorrect_password"
         
         # Create user response data with datetime converted to ISO format strings
         user_data = {
@@ -196,7 +197,7 @@ class AuthService:
         # Check if user is verified
         if not user.is_verified:
             return False, {
-                "message": "Mobile number not verified. Please verify your mobile number first.",
+                "message": "mobile_not_verified",
                 "user": user_data
             }
         
@@ -244,7 +245,7 @@ class AuthService:
         user = await AuthService.get_user_by_mobile(db, mobile_number, country_code)
         
         if not user:
-            return False, "User not found"
+            return False, "user_not_found"
         
         # Map verification type enum to VerificationType model enum
         if verification_type == VerificationTypeEnum.MOBILE_VERIFICATION:
@@ -252,7 +253,7 @@ class AuthService:
         elif verification_type == VerificationTypeEnum.PASSWORD_RESET:
             twilio_verification_type = VerificationType.PASSWORD_RESET
         else:
-            return False, "Invalid verification type"
+            return False, "invalid_verification_type"
         
         # Verify code
         success, message = await twilio_service.verify_code(
@@ -297,7 +298,7 @@ class AuthService:
             )
             
             return True, {
-                "message": "Verification successful",
+                "message": "verification_successful",
                 "access_token": access_token,
                 "refresh_token": refresh_token,
                 "token_type": "bearer",
@@ -308,11 +309,11 @@ class AuthService:
             # For password reset, just return success without tokens
             # The user will then call reset password endpoint
             return True, {
-                "message": "Password reset verification successful",
+                "message": "password_reset_verification_successful",
                 "user_id": user.id
             }
         
-        return False, "Invalid verification type"
+        return False, "invalid_verification_type"
     
     @staticmethod
     async def refresh_token(
@@ -336,13 +337,13 @@ class AuthService:
             # Check if it's actually a refresh token
             if payload.get("token_type") != "refresh":
                 logger.debug(f"Not a refresh token, payload: {payload}")
-                return False, "Invalid token type"
+                return False, "invalid_token_type"
 
             # Get user ID from token
             user_id = payload.get("sub")
             if not user_id:
                 logger.debug(f"No user_id in payload: {payload}")
-                return False, "Invalid token"
+                return False, "invalid_token"
 
             # Get user from database
             user = await AuthService.get_user_by_id(db, int(user_id))
@@ -350,12 +351,12 @@ class AuthService:
 
             if not user:
                 logger.debug(f"User not found for user_id: {user_id}")
-                return False, "User not found"
+                return False, "user_not_found"
 
             # Check if user is active
             if not user.is_active:
                 logger.debug(f"User is not active: {user_id}")
-                return False, "Inactive user"
+                return False, "inactive_user"
 
             # Generate new access token
             new_access_token = create_access_token(
@@ -378,7 +379,7 @@ class AuthService:
 
         except Exception as e:
             logger.error(f"Exception in refresh_token: {str(e)}")
-            return False, "Invalid refresh token"
+            return False, "invalid_refresh_token"
     
     @staticmethod
     async def logout_user(access_token: str, refresh_token: Optional[str] = None) -> bool:
@@ -445,7 +446,7 @@ class AuthService:
             JSON string with both languages: {"en": {...}, "es": {...}}
         """
         # Fetch all non-deleted translations
-        query = select(Translation).where(Translation.is_deleted == False)
+        query = select(Translation).options(selectinload(Translation.creator)).where(Translation.is_deleted == False)
         result = await db.execute(query)
         translations = result.scalars().all()
         
@@ -461,3 +462,77 @@ class AuthService:
         
         # Convert to JSON string
         return json.dumps(translations_dict, ensure_ascii=False)
+    
+    @staticmethod
+    async def get_translation_by_keyword(db: AsyncSession, keyword: str, language: str = "en") -> Optional[str]:
+        """
+        Get a specific translation by keyword and language
+        
+        Args:
+            db: Database session
+            keyword: The translation keyword to look up
+            language: Language code ("en" or "es"), defaults to "en"
+            
+        Returns:
+            The translated string for the specified keyword and language, or None if not found
+        """
+        # Validate language parameter
+        if language not in ["en", "es"]:
+            language = "en"
+        
+        # Fetch the translation for the specific keyword
+        query = select(Translation).options(selectinload(Translation.creator)).where(
+            Translation.keyword == keyword,
+            Translation.is_deleted == False
+        )
+        result = await db.execute(query)
+        translation = result.scalar_one_or_none()
+        
+        if translation:
+            # Return the translation for the specified language
+            if language == "en":
+                return translation.en
+            else:
+                return translation.es
+        
+        return None
+    
+    @staticmethod
+    def get_message_from_json(keyword: str, language: str = "en") -> str:
+        """
+        Get a message from the messages.json file (fallback when DB is not available)
+        
+        Args:
+            keyword: The message keyword to look up
+            language: Language code ("en" or "es"), defaults to "en"
+            
+        Returns:
+            The translated message or the keyword itself if not found
+        """
+        try:
+            # Load messages from JSON file
+            import os
+            from pathlib import Path
+            
+            # Get the project root directory
+            project_root = Path(__file__).parent.parent.parent
+            messages_file = project_root / "messages.json"
+            
+            if not messages_file.exists():
+                return keyword
+            
+            with open(messages_file, 'r', encoding='utf-8') as f:
+                messages = json.load(f)
+            
+            # Find the message by keyword
+            for message in messages:
+                if message.get("keyword") == keyword:
+                    # Return the message in the requested language, fallback to English
+                    return message.get(language, message.get("en", keyword))
+            
+            # If keyword not found, return the keyword itself
+            return keyword
+            
+        except Exception as e:
+            logger.error(f"Error loading message from JSON: {str(e)}")
+            return keyword

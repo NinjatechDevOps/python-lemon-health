@@ -27,14 +27,14 @@ class UserBase(BaseModel):
         ..., 
         min_length=7, 
         max_length=15, 
-        description="Mobile number must be between 7 and 15 digits"
+        description="mobile_number_count_error"
     )
     country_code: str = Field(
         "+34", 
         min_length=2, 
         max_length=5,
         pattern=r"^\+[0-9]{1,4}$",
-        description="Country code must start with + followed by 1-4 digits"
+        description="country_code_specification_error"
     )  # Default to Spain (+34)
     email: Optional[EmailStr] = None
 
@@ -43,34 +43,34 @@ class UserBase(BaseModel):
         # Remove any spaces or special characters
         v = ''.join(filter(str.isdigit, v))
         if not v:
-            raise ValueError('Mobile number must contain digits')
+            raise ValueError('mobile_digit_error')
         if not re.match(r'^[0-9]{7,15}$', v):
-            raise ValueError('Mobile number must be between 7 and 15 digits')
+            raise ValueError('mobile_number_count_error')
         return v
 
     @validator('country_code')
     def validate_country_code(cls, v):
         if not re.match(r'^\+[0-9]{1,4}$', v):
-            raise ValueError('Country code must start with + followed by 1-4 digits')
+            raise ValueError('country_code_specification_error')
         return v
 
 
 class UserCreate(UserBase):
     """Schema for user registration"""
-    password: str = Field(..., min_length=8, max_length=16, description="Password must be 8-16 characters")
+    password: str = Field(..., min_length=8, max_length=16, description="password_count_error")
     
     @validator('password')
     def validate_password(cls, v):
         if len(v) < 8 or len(v) > 16:
-            raise ValueError('Password must be between 8 and 16 characters')
+            raise ValueError('password_length_error')
         if not any(char.isupper() for char in v):
-            raise ValueError('Password must contain at least one uppercase letter')
+            raise ValueError('password_uppercase_required')
         if not any(char.islower() for char in v):
-            raise ValueError('Password must contain at least one lowercase letter')
+            raise ValueError('password_lowercase_required')
         if not any(char.isdigit() for char in v):
-            raise ValueError('Password must contain at least one number')
+            raise ValueError('password_number_required')
         if not any(char in "!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~" for char in v):
-            raise ValueError('Password must contain at least one special character')
+            raise ValueError('password_special_char_required')
         return v
 
 
@@ -80,14 +80,14 @@ class UserLogin(BaseModel):
         ..., 
         min_length=7, 
         max_length=15, 
-        description="Mobile number must be between 7 and 15 digits"
+        description="mobile_number_count_error"
     )
     country_code: str = Field(
         "+34", 
         min_length=2, 
         max_length=5,
         pattern=r"^\+[0-9]{1,4}$",
-        description="Country code must start with + followed by 1-4 digits"
+        description="country_code_specification_error"
     )  # Default to Spain (+34)
     password: str = Field(..., min_length=1)
     
@@ -96,15 +96,15 @@ class UserLogin(BaseModel):
         # Remove any spaces or special characters
         v = ''.join(filter(str.isdigit, v))
         if not v:
-            raise ValueError('Mobile number must contain digits')
+            raise ValueError('mobile_digit_error')
         if not re.match(r'^[0-9]{7,15}$', v):
-            raise ValueError('Mobile number must be between 7 and 15 digits')
+            raise ValueError('mobile_number_count_error')
         return v
 
     @validator('country_code')
     def validate_country_code(cls, v):
         if not re.match(r'^\+[0-9]{1,4}$', v):
-            raise ValueError('Country code must start with + followed by 1-4 digits')
+            raise ValueError('country_code_specification_error')
         return v
 
 
@@ -114,18 +114,18 @@ class VerificationRequest(BaseModel):
         ..., 
         min_length=7, 
         max_length=15, 
-        description="Mobile number must be between 7 and 15 digits"
+        description="mobile_number_count_error"
     )
     country_code: str = Field(
         "+34", 
         min_length=2, 
         max_length=5,
         pattern=r"^\+[0-9]{1,4}$",
-        description="Country code must start with + followed by 1-4 digits"
+        description="country_code_specification_error"
     )  # Default to Spain (+34)
     verification_type: VerificationTypeEnum = Field(
         default=VerificationTypeEnum.MOBILE_VERIFICATION,
-        description="Type of verification: mobile_verification or password_reset"
+        description="verification_type_error"
     )
     
     @validator('mobile_number')
@@ -133,15 +133,15 @@ class VerificationRequest(BaseModel):
         # Remove any spaces or special characters
         v = ''.join(filter(str.isdigit, v))
         if not v:
-            raise ValueError('Mobile number must contain digits')
+            raise ValueError('mobile_digit_error')
         if not re.match(r'^[0-9]{7,15}$', v):
-            raise ValueError('Mobile number must be between 7 and 15 digits')
+            raise ValueError('mobile_number_count_error')
         return v
 
     @validator('country_code')
     def validate_country_code(cls, v):
         if not re.match(r'^\+[0-9]{1,4}$', v):
-            raise ValueError('Country code must start with + followed by 1-4 digits')
+            raise ValueError('country_code_specification_error')
         return v
 
 
@@ -151,19 +151,19 @@ class VerificationCodeSubmit(BaseModel):
         ..., 
         min_length=7, 
         max_length=15, 
-        description="Mobile number must be between 7 and 15 digits"
+        description="mobile_number_count_error"
     )
     country_code: str = Field(
         "+34", 
         min_length=2, 
         max_length=5,
         pattern=r"^\+[0-9]{1,4}$",
-        description="Country code must start with + followed by 1-4 digits"
+        description="country_code_specification_error"
     )  # Default to Spain (+34)
-    code: str = Field(..., min_length=6, max_length=6, pattern=r"^[0-9]{6}$", description="6-digit verification code")
+    code: str = Field(..., min_length=6, max_length=6, pattern=r"^[0-9]{6}$", description="verification_code_invalid")
     verification_type: VerificationTypeEnum = Field(
         default=VerificationTypeEnum.MOBILE_VERIFICATION,
-        description="Type of verification: mobile_verification or password_reset"
+        description="verification_type_error"
     )
     
     @validator('mobile_number')
@@ -171,21 +171,21 @@ class VerificationCodeSubmit(BaseModel):
         # Remove any spaces or special characters
         v = ''.join(filter(str.isdigit, v))
         if not v:
-            raise ValueError('Mobile number must contain digits')
+            raise ValueError('mobile_digit_error')
         if not re.match(r'^[0-9]{7,15}$', v):
-            raise ValueError('Mobile number must be between 7 and 15 digits')
+            raise ValueError('mobile_number_count_error')
         return v
 
     @validator('country_code')
     def validate_country_code(cls, v):
         if not re.match(r'^\+[0-9]{1,4}$', v):
-            raise ValueError('Country code must start with + followed by 1-4 digits')
+            raise ValueError('country_code_specification_error')
         return v
 
     @validator('code')
     def validate_code(cls, v):
         if not re.match(r'^[0-9]{6}$', v):
-            raise ValueError('Verification code must be 6 digits')
+            raise ValueError('verification_code_invalid')
         return v
 
 
@@ -195,14 +195,14 @@ class ForgotPasswordRequest(BaseModel):
         ..., 
         min_length=7, 
         max_length=15, 
-        description="Mobile number must be between 7 and 15 digits"
+        description="mobile_number_count_error"
     )
     country_code: str = Field(
         "+34", 
         min_length=2, 
         max_length=5,
         pattern=r"^\+[0-9]{1,4}$",
-        description="Country code must start with + followed by 1-4 digits"
+        description="country_code_specification_error"
     )  # Default to Spain (+34)
     
     @validator('mobile_number')
@@ -210,15 +210,15 @@ class ForgotPasswordRequest(BaseModel):
         # Remove any spaces or special characters
         v = ''.join(filter(str.isdigit, v))
         if not v:
-            raise ValueError('Mobile number must contain digits')
+            raise ValueError('mobile_digit_error')
         if not re.match(r'^[0-9]{7,15}$', v):
-            raise ValueError('Mobile number must be between 7 and 15 digits')
+            raise ValueError('mobile_number_count_error')
         return v
 
     @validator('country_code')
     def validate_country_code(cls, v):
         if not re.match(r'^\+[0-9]{1,4}$', v):
-            raise ValueError('Country code must start with + followed by 1-4 digits')
+            raise ValueError('country_code_specification_error')
         return v
 
 
@@ -228,65 +228,65 @@ class ResetPasswordRequest(BaseModel):
         ..., 
         min_length=7, 
         max_length=15, 
-        description="Mobile number must be between 7 and 15 digits"
+        description="mobile_number_count_error"
     )
     country_code: str = Field(
         "+34", 
         min_length=2, 
         max_length=5,
         pattern=r"^\+[0-9]{1,4}$",
-        description="Country code must start with + followed by 1-4 digits"
+        description="country_code_specification_error"
     )  # Default to Spain (+34)
-    new_password: str = Field(..., min_length=8, max_length=16, description="Password must be 8-16 characters")
+    new_password: str = Field(..., min_length=8, max_length=16, description="password_count_error")
     
     @validator('mobile_number')
     def validate_mobile_number(cls, v):
         # Remove any spaces or special characters
         v = ''.join(filter(str.isdigit, v))
         if not v:
-            raise ValueError('Mobile number must contain digits')
+            raise ValueError('mobile_digit_error')
         if not re.match(r'^[0-9]{7,15}$', v):
-            raise ValueError('Mobile number must be between 7 and 15 digits')
+            raise ValueError('mobile_number_count_error')
         return v
 
     @validator('country_code')
     def validate_country_code(cls, v):
         if not re.match(r'^\+[0-9]{1,4}$', v):
-            raise ValueError('Country code must start with + followed by 1-4 digits')
+            raise ValueError('country_code_specification_error')
         return v
     
     @validator('new_password')
     def validate_password(cls, v):
         if len(v) < 8 or len(v) > 16:
-            raise ValueError('Password must be between 8 and 16 characters')
+            raise ValueError('password_length_error')
         if not any(char.isupper() for char in v):
-            raise ValueError('Password must contain at least one uppercase letter')
+            raise ValueError('password_uppercase_required')
         if not any(char.islower() for char in v):
-            raise ValueError('Password must contain at least one lowercase letter')
+            raise ValueError('password_lowercase_required')
         if not any(char.isdigit() for char in v):
-            raise ValueError('Password must contain at least one number')
+            raise ValueError('password_number_required')
         if not any(char in "!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~" for char in v):
-            raise ValueError('Password must contain at least one special character')
+            raise ValueError('password_special_char_required')
         return v
 
 
 class ChangePasswordRequest(BaseModel):
     """Schema for changing password (for authenticated users)"""
     current_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=8, max_length=16, description="Password must be 8-16 characters")
+    new_password: str = Field(..., min_length=8, max_length=16, description="password_count_error")
     
     @validator('new_password')
     def validate_password(cls, v):
         if len(v) < 8 or len(v) > 16:
-            raise ValueError('Password must be between 8 and 16 characters')
+            raise ValueError('password_length_error')
         if not any(char.isupper() for char in v):
-            raise ValueError('Password must contain at least one uppercase letter')
+            raise ValueError('password_uppercase_required')
         if not any(char.islower() for char in v):
-            raise ValueError('Password must contain at least one lowercase letter')
+            raise ValueError('password_lowercase_required')
         if not any(char.isdigit() for char in v):
-            raise ValueError('Password must contain at least one number')
+            raise ValueError('password_number_required')
         if not any(char in "!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~" for char in v):
-            raise ValueError('Password must contain at least one special character')
+            raise ValueError('password_special_char_required')
         return v
 
 

@@ -30,7 +30,11 @@ user_router = APIRouter()
 
 
 @router.post("/register", response_model=BaseResponse, status_code=status.HTTP_201_CREATED)
-async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> Any:
+async def register(
+    user_in: UserCreate,
+    db: AsyncSession = Depends(get_db),
+    app_language: str = Header("en", alias="App-Language")
+) -> Any:
     """
     Register a new user
     
@@ -50,17 +54,25 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> A
     )
     if existing_user:
         logger.warning(f"User with mobile {user_in.country_code}{user_in.mobile_number} already exists.")
+        # Get translated message
+        message = await AuthService.get_translation_by_keyword(db, "user_already_exists", app_language)
+        if not message:
+            message = AuthService.get_message_from_json("user_already_exists", app_language)
         return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            message="Looks like you already have an account. Please log in."
+            message=message
         )
     # Check if user with this email already exists
     if user_in.email:
         existing_email_user = await AuthService.get_user_by_email(db, user_in.email)
         if existing_email_user:
+            # Get translated message
+            message = await AuthService.get_translation_by_keyword(db, "email_already_exists", app_language)
+            if not message:
+                message = AuthService.get_message_from_json("email_already_exists", app_language)
             return api_error_response(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message="User with this email already exists"
+                message=message
             )
     # Register user and send verification code
     user, otp_sent, message = await AuthService.register_user(
@@ -86,22 +98,45 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)) -> A
             created_at=user.created_at
         )
     except ValidationError as e:
+        # Get translated message
+        message = await AuthService.get_translation_by_keyword(db, "invalid_user_data", app_language)
+        if not message:
+            message = AuthService.get_message_from_json("invalid_user_data", app_language)
         return api_error_response(
-            message="Invalid user data",
+            message=message,
             status_code=400,
             data={"errors": e.errors()}
         )
     # Always return 201 Created since the user account was created
     logger.info('User registered successfully.')
+    # Get translated messages
+    if otp_sent:
+        message = await AuthService.get_translation_by_keyword(db, "user_registered_successfully", app_language)
+        if not message:
+            message = AuthService.get_message_from_json("user_registered_successfully", app_language)
+    else:
+        base_msg = await AuthService.get_translation_by_keyword(db, "user_registered_successfully", app_language)
+        if not base_msg:
+            base_msg = AuthService.get_message_from_json("user_registered_successfully", app_language)
+        verify_msg = await AuthService.get_translation_by_keyword(db, "verification_code_not_sent", app_language)
+        if not verify_msg:
+            verify_msg = AuthService.get_message_from_json("verification_code_not_sent", app_language)
+        # Just use the verification_code_not_sent message when OTP fails
+        message = verify_msg
+    
     return api_response(
         success=True,
-        message="User registered successfully. " + ("Please verify your mobile number." if otp_sent else "Verification code could not be sent. Please use the resend option."),
+        message=message,
         data=user_response
     )
 
 
 @router.post("/login", response_model=BaseResponse)
-async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)) -> Any:
+async def login(
+    user_in: UserLogin,
+    db: AsyncSession = Depends(get_db),
+    app_language: str = Header("en", alias="App-Language")
+) -> Any:
     """
     Login with mobile number and password
     
@@ -133,23 +168,27 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)) -> Any:
                     country_code=user.country_code,
                     user_id=user.id
                 )
+            # Translate the message keyword
+            translated_message = await AuthService.get_translation_by_keyword(db, result["message"], app_language)
+            if not translated_message:
+                translated_message = AuthService.get_message_from_json(result["message"], app_language)
             return api_response(
                 success=False,
-                message=result["message"],
+                message=translated_message,
                 data={
                     "user": result["user"],
                     "otp_sent": otp_sent,
                     "otp_message": otp_message
                 }
             )
-        # # Otherwise, it's a simple error message
-        # return api_error_response(
-        #     status_code=status.HTTP_401_UNAUTHORIZED,
-        #     message=result
-        # )
+        # # Otherwise, it's a simple error message (keyword)
+        # Translate the error message keyword
+        translated_message = await AuthService.get_translation_by_keyword(db, result, app_language)
+        if not translated_message:
+            translated_message = AuthService.get_message_from_json(result, app_language)
         return api_error_response(
             status_code=status.HTTP_404_NOT_FOUND,
-            message=result
+            message=translated_message
         )
     
     try:
@@ -165,21 +204,33 @@ async def login(user_in: UserLogin, db: AsyncSession = Depends(get_db)) -> Any:
             "user": result["user"]
         }
     except ValidationError as e:
+        # Get translated message
+        message = await AuthService.get_translation_by_keyword(db, "invalid_token_data", app_language)
+        if not message:
+            message = AuthService.get_message_from_json("invalid_token_data", app_language)
         return api_error_response(
-            message="Invalid token data",
+            message=message,
             status_code=400,
             data={"errors": e.errors()}
         )
     logger.info('User logged in successfully.')
+    # Get translated message
+    message = await AuthService.get_translation_by_keyword(db, "login_successful", app_language)
+    if not message:
+        message = AuthService.get_message_from_json("login_successful", app_language)
     return api_response(
         success=True,
-        message="Login successful",
+        message=message,
         data=response_data
     )
 
 
 @router.post("/verify", response_model=BaseResponse)
-async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession = Depends(get_db)) -> Any:
+async def verify_code(
+    verification_in: VerificationCodeSubmit,
+    db: AsyncSession = Depends(get_db),
+    app_language: str = Header("en", alias="App-Language")
+) -> Any:
     """
     Verify SMS code for mobile verification or password reset
     
@@ -202,10 +253,14 @@ async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession 
     
     if not success:
         logger.warning(f"Verification failed for mobile {verification_in.country_code}{verification_in.mobile_number}. Reason: {result}")
+        # Translate the error message keyword
+        translated_message = await AuthService.get_translation_by_keyword(db, result, app_language)
+        if not translated_message:
+            translated_message = AuthService.get_message_from_json(result, app_language)
         # Include the code in the error response for debugging
         return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            message=f"{result} (Code: {verification_in.code})"
+            message=f"{translated_message} (Code: {verification_in.code})"
         )
     
     # Handle different verification types
@@ -230,31 +285,47 @@ async def verify_code(verification_in: VerificationCodeSubmit, db: AsyncSession 
                 data={"errors": e.errors()}
             )
         logger.info('Password reset verification successful.')
+        # Get translated message
+        message = await AuthService.get_translation_by_keyword(db, "verification_successful", app_language)
+        if not message:
+            message = AuthService.get_message_from_json("verification_successful", app_language)
         return api_response(
             success=True,
-            message="Verification successful",
+            message=message,
             data=response_data
         )
     
     elif verification_in.verification_type == VerificationTypeEnum.PASSWORD_RESET:
         logger.info('Password reset verification successful.')
+        # Get translated message
+        message = await AuthService.get_translation_by_keyword(db, "password_reset_verification_successful", app_language)
+        if not message:
+            message = AuthService.get_message_from_json("password_reset_verification_successful", app_language)
         return api_response(
             success=True,
-            message="Password reset verification successful. You can now reset your password.",
+            message=message,
             data={
                 "user_id": result["user_id"],
                 "verification_type": "password_reset"
             }
         )
     
+    # Get translated message
+    message = await AuthService.get_translation_by_keyword(db, "invalid_verification_type", app_language)
+    if not message:
+        message = AuthService.get_message_from_json("invalid_verification_type", app_language)
     return api_error_response(
         status_code=status.HTTP_400_BAD_REQUEST,
-        message="Invalid verification type"
+        message=message
     )
 
 
 @router.post("/resend-verification", response_model=BaseResponse)
-async def resend_verification(verification_in: VerificationRequest, db: AsyncSession = Depends(get_db)) -> Any:
+async def resend_verification(
+    verification_in: VerificationRequest,
+    db: AsyncSession = Depends(get_db),
+    app_language: str = Header("en", alias="App-Language")
+) -> Any:
     """
     Resend verification code for mobile verification or password reset
     
@@ -275,7 +346,7 @@ async def resend_verification(verification_in: VerificationRequest, db: AsyncSes
         logger.warning(f"User with mobile {verification_in.country_code}{verification_in.mobile_number} not found for resending verification.")
         return api_error_response(
             status_code=status.HTTP_404_NOT_FOUND,
-            message="User not found"
+            message=await AuthService.get_translation_by_keyword(db, "user_not_found", app_language) or AuthService.get_message_from_json("user_not_found", app_language)
         )
     
     # Map verification type enum to VerificationType model enum
@@ -285,14 +356,14 @@ async def resend_verification(verification_in: VerificationRequest, db: AsyncSes
         if user.is_verified:
             return api_error_response(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message="User is already verified"
+                message=await AuthService.get_translation_by_keyword(db, "user_already_verified", app_language) or AuthService.get_message_from_json("user_already_verified", app_language)
             )
     elif verification_in.verification_type == VerificationTypeEnum.PASSWORD_RESET:
         twilio_verification_type = VerificationType.PASSWORD_RESET
     else:
         return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            message="Invalid verification type"
+            message=await AuthService.get_translation_by_keyword(db, "invalid_verification_type", app_language) or AuthService.get_message_from_json("invalid_verification_type", app_language)
         )
     
     # Send verification code
@@ -307,7 +378,7 @@ async def resend_verification(verification_in: VerificationRequest, db: AsyncSes
     # Always return 200 OK since the request was processed
     return api_response(
         success=True,
-        message="Verification code request processed",
+        message=await AuthService.get_translation_by_keyword(db, "verification_code_sent", app_language) or AuthService.get_message_from_json("verification_code_sent", app_language),
         data={
             "otp_sent": otp_sent,
             "otp_message": None if otp_sent else message,
@@ -317,7 +388,11 @@ async def resend_verification(verification_in: VerificationRequest, db: AsyncSes
 
 
 @router.post("/forgot-password", response_model=BaseResponse)
-async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)) -> Any:
+async def forgot_password(
+    request_in: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    app_language: str = Header("en", alias="App-Language")
+) -> Any:
     """
     Request password reset
     
@@ -338,7 +413,7 @@ async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = 
         logger.warning(f"User with mobile {request_in.country_code}{request_in.mobile_number} not found for password reset.")
         return api_error_response(
             status_code=status.HTTP_404_NOT_FOUND,
-            message="User not found"
+            message=await AuthService.get_translation_by_keyword(db, "user_not_found", app_language) or AuthService.get_message_from_json("user_not_found", app_language)
         )
     
     # Send verification code
@@ -353,7 +428,7 @@ async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = 
     # Always return 200 OK since the request was processed
     return api_response(
         success=True,
-        message="Password reset request processed",
+        message=await AuthService.get_translation_by_keyword(db, "password_reset_request_processed", app_language) or AuthService.get_message_from_json("password_reset_request_processed", app_language),
         data={
             "otp_sent": otp_sent,
             "otp_message": None if otp_sent else message,
@@ -363,7 +438,11 @@ async def forgot_password(request_in: ForgotPasswordRequest, db: AsyncSession = 
 
 
 @router.post("/reset-password", response_model=BaseResponse)
-async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depends(get_db)) -> Any:
+async def reset_password(
+    reset_in: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    app_language: str = Header("en", alias="App-Language")
+) -> Any:
     """
     Reset password (after OTP verification)
     
@@ -385,7 +464,7 @@ async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depe
         logger.warning(f"User with mobile {reset_in.country_code}{reset_in.mobile_number} not found for password reset.")   
         return api_error_response(
             status_code=status.HTTP_404_NOT_FOUND,
-            message="User not found"
+            message=await AuthService.get_translation_by_keyword(db, "user_not_found", app_language) or AuthService.get_message_from_json("user_not_found", app_language)
         )
     
     # Update password
@@ -393,7 +472,7 @@ async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depe
     logger.info('Password reset successfully.')
     return api_response(
         success=True,
-        message="Password reset successfully",
+        message=await AuthService.get_translation_by_keyword(db, "password_reset_successfully", app_language) or AuthService.get_message_from_json("password_reset_successfully", app_language),
         data={
             "user_id": user.id
         }
@@ -401,7 +480,11 @@ async def reset_password(reset_in: ResetPasswordRequest, db: AsyncSession = Depe
 
 
 @router.post("/refresh-token", response_model=BaseResponse)
-async def refresh_token(token_data: RefreshToken, db: AsyncSession = Depends(get_db)) -> Any:
+async def refresh_token(
+    token_data: RefreshToken,
+    db: AsyncSession = Depends(get_db),
+    app_language: str = Header("en", alias="App-Language")
+) -> Any:
     """
     Get a new access token using a refresh token
     
@@ -415,9 +498,13 @@ async def refresh_token(token_data: RefreshToken, db: AsyncSession = Depends(get
     )
     
     if not success:
+        # Translate the error message keyword
+        translated_message = await AuthService.get_translation_by_keyword(db, result, app_language)
+        if not translated_message:
+            translated_message = AuthService.get_message_from_json(result, app_language)
         return api_error_response(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            message=result
+            message=translated_message
         )
     
     try:
@@ -427,14 +514,18 @@ async def refresh_token(token_data: RefreshToken, db: AsyncSession = Depends(get
             token_type=result["token_type"]
         )
     except ValidationError as e:
+        # Get translated message
+        message = await AuthService.get_translation_by_keyword(db, "invalid_token_data", app_language)
+        if not message:
+            message = AuthService.get_message_from_json("invalid_token_data", app_language)
         return api_error_response(
-            message="Invalid token data",
+            message=message,
             status_code=400,
             data={"errors": e.errors()}
         )
     return api_response(
         success=True,
-        message="Token refreshed successfully",
+        message=await AuthService.get_translation_by_keyword(db, "token_refreshed_successfully", app_language) or AuthService.get_message_from_json("token_refreshed_successfully", app_language),
         data=token_response
     )
 
@@ -443,7 +534,8 @@ async def refresh_token(token_data: RefreshToken, db: AsyncSession = Depends(get
 async def change_password(
     password_data: ChangePasswordRequest,
     current_user: Annotated[User, Depends(get_current_mobile_verified_user)],
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    app_language: str = Header("en", alias="App-Language")
 ) -> Any:
     """
     Change password for authenticated user
@@ -458,7 +550,7 @@ async def change_password(
     if not verify_password(password_data.current_password, current_user.hashed_password):
         return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            message="Incorrect current password"
+            message=await AuthService.get_translation_by_keyword(db, "incorrect_current_password", app_language) or AuthService.get_message_from_json("incorrect_current_password", app_language)
         )
     
     # Update password
@@ -466,7 +558,7 @@ async def change_password(
     logger.info('Password changed successfully.')   
     return api_response(
         success=True,
-        message="Password changed successfully",
+        message=await AuthService.get_translation_by_keyword(db, "password_changed_successfully", app_language) or AuthService.get_message_from_json("password_changed_successfully", app_language),
         data={
             "user_id": current_user.id
         }
@@ -476,6 +568,8 @@ async def change_password(
 async def logout(
     logout_data: LogoutRequest,
     current_user: Annotated[User, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+    app_language: str = Header("en", alias="App-Language")
 ) -> Any:
     """
     Logout a user by invalidating their tokens
@@ -494,12 +588,12 @@ async def logout(
     if not success:
         return api_error_response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message="Failed to logout"
+            message=await AuthService.get_translation_by_keyword(db, "failed_to_logout", app_language) or AuthService.get_message_from_json("failed_to_logout", app_language)
         )
     logger.info('User logged out successfully.')
     return api_response(
         success=True,
-        message="Successfully logged out",
+        message=await AuthService.get_translation_by_keyword(db, "logged_out_successfully", app_language) or AuthService.get_message_from_json("logged_out_successfully", app_language),
         data={
             "user_id": current_user.id
         }
@@ -508,7 +602,8 @@ async def logout(
 @router.delete("/me", response_model=BaseResponse)
 async def delete_me(
     current_user: Annotated[User, Depends(get_current_user)],
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    app_language: str = Header("en", alias="App-Language")
 ) -> Any:
     """
     Soft delete the current authenticated user (set is_active=False)
@@ -518,13 +613,13 @@ async def delete_me(
     if not current_user.is_active:
         return api_error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            message="User is already inactive."
+            message=await AuthService.get_translation_by_keyword(db, "user_already_inactive", app_language) or AuthService.get_message_from_json("user_already_inactive", app_language)
         )
     await AuthService.soft_delete_user(db, current_user)
     logger.info('User account deleted (soft delete).')
     return api_response(
         success=True,
-        message="User account deleted.",
+        message=await AuthService.get_translation_by_keyword(db, "account_deleted_soft", app_language) or AuthService.get_message_from_json("account_deleted_soft", app_language),
         data={"user_id": current_user.id}
     )
 
