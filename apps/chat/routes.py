@@ -42,7 +42,7 @@ async def get_prompts(
     """
     logger.info(f"url : /prompts [GET] - public endpoint")
     try:
-        prompt_list = await ChatService.get_prompts(db)
+        prompt_list = await ChatService.get_prompts(db, app_language)
         logger.info(f"Retrieved {len(prompt_list)} prompts.")
         # Get translated message
         message = await AuthService.get_translation_by_keyword(db, "prompts_retrieved_successfully", app_language)

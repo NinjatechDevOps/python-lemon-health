@@ -5,6 +5,7 @@ Script to seed initial prompts in the database
 import asyncio
 import sys
 import os
+import json
 
 # Add the project root to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -38,49 +39,49 @@ async def seed_prompts():
             prompts = [
                 {
                     # "name": "Booking",
-                    "name": "Appointments",
+                    "name": "appointments_keyword",
                     "description": "Book appointments and services",
                     "prompt_type": PromptType.BOOKING,
                     "system_prompt": "You are Lemon, a booking assistant. Help users book appointments, services, and manage their schedule. Be helpful and efficient in scheduling.",
                     "icon_path": "/static/prompts_icon/fi_8304797.png"  # Calendar icon
                 },
                 {
-                    "name": "Shop",
+                    "name": "shop_keyword",
                     "description": "Browse and purchase health products",
                     "prompt_type": PromptType.SHOP,
                     "system_prompt": "You are Lemon, a shopping assistant. Help users find and purchase health products, supplements, and wellness items. Provide recommendations based on their needs.",
                     "icon_path": "/static/prompts_icon/fi_6917110.png"  # Shopping cart icon
                 },
                 {
-                    "name": "Nutrition",
+                    "name": "nutrition_keyword",
                     "description": "Get personalized nutrition advice",
                     "prompt_type": PromptType.NUTRITION,
                     "system_prompt": "You are Lemon, a nutrition expert assistant. Provide helpful, evidence-based nutrition advice tailored to user needs. Focus on healthy eating habits, balanced diets, and nutritional information.",
                     "icon_path": "/static/prompts_icon/svg1509.png"  # Bowl with leaves icon
                 },
                 {
-                    "name": "Exercise",
+                    "name": "exercise_keyword",
                     "description": "Get personalized exercise recommendations",
                     "prompt_type": PromptType.EXERCISE,
                     "system_prompt": "You are Lemon, a fitness expert assistant. Provide helpful, safe exercise recommendations and fitness advice. Consider different fitness levels and goals when responding.",
                     "icon_path": "/static/prompts_icon/fi_959412.png"  # Dumbbell icon
                 },
                 {
-                    "name": "Documents",
+                    "name": "documents_keyword",
                     "description": "Upload and analyze health documents",
                     "prompt_type": PromptType.DOCUMENTS,
                     "system_prompt": "You are Lemon, a medical document analysis assistant. Help users understand medical documents, reports, and terminology in simple language.",
                     "icon_path": "/static/prompts_icon/fi_2258853.png"  # Document icon
                 },
                 {
-                    "name": "Prescriptions",
+                    "name": "prescriptions_keyword",
                     "description": "Manage your prescriptions",
                     "prompt_type": PromptType.PRESCRIPTIONS,
                     "system_prompt": "You are Lemon, a prescription management assistant. Help users understand and manage their prescriptions and medications safely.",
                     "icon_path": "/static/prompts_icon/fi_7170401.png"  # Medical briefcase icon
                 },
                 {
-                    "name": "Default",
+                    "name": "default_keyword",
                     "description": "Default assistant for general health queries",
                     "prompt_type": PromptType.DEFAULT,
                     "system_prompt": "You are Lemon, a health assistant. You can help with nutrition and exercise related queries. If the user asks about something not related to nutrition or exercise, politely explain that you can only help with nutrition and exercise topics. Be helpful, friendly, and professional.",
