@@ -12,6 +12,7 @@ from apps.core.base import Base
 from apps.auth.models import User, VerificationCode, VerificationType
 from apps.profile.models import Profile
 from apps.chat.models import Prompt, Conversation, ChatMessage
+from apps.admin_panel.models import Translation
 # Importing placeholders - these will be implemented later
 # Uncomment when these models are implemented
 # from apps.chat.models import Chat

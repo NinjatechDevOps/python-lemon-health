@@ -8,7 +8,9 @@ from apps.admin_panel.deps import get_current_admin_user, get_admin_request_info
 from apps.admin_panel.schemas import (
     AdminLoginRequest, AdminLoginResponse, AdminUserResponse, 
     AdminCreateUserRequest, AdminUpdateUserRequest,
-    AdminChatHistoryListResponse
+    AdminChatHistoryListResponse,
+    TranslationCreateRequest, TranslationUpdateRequest,
+    TranslationResponse, TranslationListResponse
 )
 from apps.admin_panel.services import AdminService
 from apps.core.logging_config import get_logger
@@ -653,3 +655,274 @@ async def update_out_of_scope_message(
             "message": f"Error updating out-of-scope flag: {str(e)}",
             "data": None
         } 
+
+
+# Translation Management Routes
+@admin_router.post("/translations")
+async def create_translation(
+    translation_data: TranslationCreateRequest,
+    current_admin: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db),
+    request_info: Tuple[Optional[str], Optional[str]] = Depends(get_admin_request_info)
+) -> Dict[str, Any]:
+    """
+    Create a new translation
+    
+    Only admin users can create translations.
+    """
+    try:
+        success, translation, message = await AdminService.create_translation(
+            db=db,
+            translation_data=translation_data,
+            admin_user_id=current_admin.id
+        )
+        
+        if not success:
+            return {
+                "success": False,
+                "message": message,
+                "data": None
+            }
+        
+        # Get creator name
+        creator_name = f"{current_admin.first_name} {current_admin.last_name}"
+        
+        return {
+            "success": True,
+            "message": message,
+            "data": {
+                "id": translation.id,
+                "keyword": translation.keyword,
+                "en": translation.en,
+                "es": translation.es,
+                "is_deleted": translation.is_deleted,
+                "is_deletable": translation.is_deletable,
+                "created_by": translation.created_by,
+                "created_at": translation.created_at.isoformat(),
+                "updated_at": translation.updated_at.isoformat() if translation.updated_at else translation.created_at.isoformat(),
+                "creator_name": creator_name
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error creating translation: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Error creating translation: {str(e)}",
+            "data": None
+        }
+
+
+@admin_router.get("/translations")
+async def get_translations(
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(20, ge=1, le=100, description="Items per page"),
+    search: Optional[str] = Query(None, description="Search by keyword or translation"),
+    current_admin: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Get paginated list of translations
+    
+    Only admin users can view translations.
+    """
+    try:
+        translations, total = await AdminService.get_translations_list(
+            db=db,
+            page=page,
+            per_page=per_page,
+            search=search
+        )
+        
+        # Calculate pagination info
+        total_pages = (total + per_page - 1) // per_page
+        has_next = page < total_pages
+        has_prev = page > 1
+        
+        # Format translations with creator names
+        translations_data = []
+        for translation in translations:
+            # Get creator name if available
+            creator_name = None
+            if translation.creator:
+                creator_name = f"{translation.creator.first_name} {translation.creator.last_name}"
+            
+            translations_data.append({
+                "id": translation.id,
+                "keyword": translation.keyword,
+                "en": translation.en,
+                "es": translation.es,
+                "is_deleted": translation.is_deleted,
+                "is_deletable": translation.is_deletable,
+                "created_by": translation.created_by,
+                "created_at": translation.created_at.isoformat(),
+                "updated_at": translation.updated_at.isoformat() if translation.updated_at else translation.created_at.isoformat(),
+                "creator_name": creator_name
+            })
+        
+        return {
+            "success": True,
+            "message": "Translations retrieved successfully",
+            "data": {
+                "translations": translations_data,
+                "total": total,
+                "page": page,
+                "per_page": per_page,
+                "total_pages": total_pages,
+                "has_next": has_next,
+                "has_prev": has_prev
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error retrieving translations: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Error retrieving translations: {str(e)}",
+            "data": None
+        }
+
+
+@admin_router.get("/translations/{translation_id}")
+async def get_translation(
+    translation_id: int,
+    current_admin: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Get a specific translation by ID
+    
+    Only admin users can view translations.
+    """
+    try:
+        translation = await AdminService.get_translation_by_id(db, translation_id)
+        
+        if not translation:
+            return {
+                "success": False,
+                "message": "Translation not found",
+                "data": None
+            }
+        
+        # Get creator name if available
+        creator_name = None
+        if translation.creator:
+            creator_name = f"{translation.creator.first_name} {translation.creator.last_name}"
+        
+        return {
+            "success": True,
+            "message": "Translation retrieved successfully",
+            "data": {
+                "id": translation.id,
+                "keyword": translation.keyword,
+                "en": translation.en,
+                "es": translation.es,
+                "is_deleted": translation.is_deleted,
+                "is_deletable": translation.is_deletable,
+                "created_by": translation.created_by,
+                "created_at": translation.created_at.isoformat(),
+                "updated_at": translation.updated_at.isoformat() if translation.updated_at else translation.created_at.isoformat(),
+                "creator_name": creator_name
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error retrieving translation: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Error retrieving translation: {str(e)}",
+            "data": None
+        }
+
+
+@admin_router.put("/translations/{translation_id}")
+async def update_translation(
+    translation_id: int,
+    translation_data: TranslationUpdateRequest,
+    current_admin: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db),
+    request_info: Tuple[Optional[str], Optional[str]] = Depends(get_admin_request_info)
+) -> Dict[str, Any]:
+    """
+    Update a translation
+    
+    Only admin users can update translations.
+    """
+    try:
+        success, translation, message = await AdminService.update_translation(
+            db=db,
+            translation_id=translation_id,
+            translation_data=translation_data,
+            admin_user_id=current_admin.id
+        )
+        
+        if not success:
+            return {
+                "success": False,
+                "message": message,
+                "data": None
+            }
+        
+        # Get creator name if available
+        creator_name = None
+        if translation.creator:
+            creator_name = f"{translation.creator.first_name} {translation.creator.last_name}"
+        
+        return {
+            "success": True,
+            "message": message,
+            "data": {
+                "id": translation.id,
+                "keyword": translation.keyword,
+                "en": translation.en,
+                "es": translation.es,
+                "is_deleted": translation.is_deleted,
+                "is_deletable": translation.is_deletable,
+                "created_by": translation.created_by,
+                "created_at": translation.created_at.isoformat(),
+                "updated_at": translation.updated_at.isoformat() if translation.updated_at else translation.created_at.isoformat(),
+                "creator_name": creator_name
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error updating translation: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Error updating translation: {str(e)}",
+            "data": None
+        }
+
+
+@admin_router.delete("/translations/{translation_id}")
+async def delete_translation(
+    translation_id: int,
+    current_admin: User = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db),
+    request_info: Tuple[Optional[str], Optional[str]] = Depends(get_admin_request_info)
+) -> Dict[str, Any]:
+    """
+    Soft delete a translation
+    
+    Only admin users can delete translations.
+    """
+    try:
+        success, message = await AdminService.delete_translation(
+            db=db,
+            translation_id=translation_id,
+            admin_user_id=current_admin.id
+        )
+        
+        return {
+            "success": success,
+            "message": message,
+            "data": None
+        }
+        
+    except Exception as e:
+        logger.error(f"Error deleting translation: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Error deleting translation: {str(e)}",
+            "data": None
+        }
