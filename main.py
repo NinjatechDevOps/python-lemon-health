@@ -52,7 +52,6 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     Global handler for HTTPExceptions to ensure standardized response format
     """
     # Check if the detail is already in our standardized format
-    print(1233)
     if isinstance(exc.detail, dict) and all(k in exc.detail for k in ["success", "message", "data"]):
         return JSONResponse(
             status_code=exc.status_code,
