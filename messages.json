@@ -1596,5 +1596,40 @@
     "keyword": "default_prompt_not_found",
     "en": "Default prompt not found in database",
     "es": "Prompt predeterminado no encontrado en la base de datos"
+  },
+  {
+    "keyword": "appointments_keyword",
+    "en": "Appointments",
+    "es": "Citas"
+  },
+  {
+    "keyword": "shop_keyword",
+    "en": "Shop",
+    "es": "Tienda"
+  },
+  {
+    "keyword": "nutrition_keyword",
+    "en": "Nutrition",
+    "es": "Nutrición"
+  },
+  {
+    "keyword": "exercise_keyword",
+    "en": "Exercise",
+    "es": "Ejercicio"
+  },
+  {
+    "keyword": "documents_keyword",
+    "en": "Documents",
+    "es": "Documentos"
+  },
+  {
+    "keyword": "prescriptions_keyword",
+    "en": "Prescriptions",
+    "es": "Recetas"
+  },
+  {
+    "keyword": "default_keyword",
+    "en": "Default",
+    "es": "Predeterminado"
   }
 ]

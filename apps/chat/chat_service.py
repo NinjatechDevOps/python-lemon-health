@@ -23,6 +23,7 @@ from apps.chat.prompts import (
     DEFAULT_PROMPT_GUARDRAILS, DEFAULT_PROMPT_SYSTEM, QUERY_CLASSIFICATION_PROMPT, 
     DEFAULT_ALLOWED_PROMPT_TYPES, DEFAULT_PROMPT_TYPE, ENHANCED_QUERY_CLASSIFICATION_PROMPT
 )
+from apps.auth.services import AuthService
 from apps.core.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -216,21 +217,27 @@ class ChatService:
         return conversation, system_prompt
     
     @staticmethod
-    async def get_prompts(db: AsyncSession) -> List[Dict[str, Any]]:
-        """Get all available prompts from the database"""
+    async def get_prompts(db: AsyncSession, app_language: str = "en") -> List[Dict[str, Any]]:
+        """Get all available prompts from the database with translated names"""
         try:
             prompts = await db.execute(Prompt.__table__.select())
             prompt_objs = prompts.fetchall()
-            prompt_list = [
-                {
+            prompt_list = []
+            
+            for p in prompt_objs:
+                # Get translated name using the keyword stored in the name field
+                translated_name = await AuthService.get_translation_by_keyword(db, p.name, app_language)
+                if not translated_name:
+                    translated_name = AuthService.get_message_from_json(p.name, app_language)
+                
+                prompt_list.append({
                     "id": p.id,
-                    "name": p.name,
+                    "name": translated_name,
                     "description": p.description,
                     "prompt_type": p.prompt_type,
                     "icon_path": convert_icon_path_to_complete_url(p.icon_path)
-                }
-                for p in prompt_objs
-            ]
+                })
+            
             return prompt_list
         except Exception as e:
             raise Exception("error_retrieving_prompts_service")
