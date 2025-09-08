@@ -83,33 +83,33 @@ class ProfileBase(BaseModel):
         if v is not None:
             weight_unit = values.get('weight_unit', 'kg')
             if weight_unit == 'kg' and (v < 20 or v > 500):
-                raise ValueError('Weight must be between 20 and 500 kg')
+                raise ValueError('weight_range_kg_error')
             elif weight_unit == 'lbs' and (v < 44.1 or v > 1102.3):
-                raise ValueError('Weight must be between 44.1 and 1102.3 lbs')
+                raise ValueError('weight_range_lbs_error')
         return v
 
     @validator('height_unit')
     def validate_height_unit(cls, v):
         if v and v not in ['cm', 'ft/in']:
-            raise ValueError('Height unit must be either "cm" or "ft/in"')
+            raise ValueError('height_unit_error')
         return v
         
     @validator('weight_unit')
     def validate_weight_unit(cls, v):
         if v and v not in ['kg', 'lbs']:
-            raise ValueError('Weight unit must be either "kg" or "lbs"')
+            raise ValueError('weight_unit_error')
         return v
         
     @validator('gender')
     def validate_gender(cls, v):
         if v and v not in ['Male', 'Female', 'Other']:
-            raise ValueError('Gender must be either "Male", "Female", or "Other"')
+            raise ValueError('gender_error')
         return v
         
     @validator('profile_picture_url')
     def validate_profile_picture_url(cls, v):
         if v and not re.match(r'^/media/profile_pictures/.*\.(jpg|jpeg|png)$', v):
-            raise ValueError('Invalid profile picture URL format')
+            raise ValueError('profile_picture_url_error')
         return v
 
 class ProfileCreate(ProfileBase):

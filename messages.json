@@ -1308,5 +1308,293 @@
     "keyword": "document_pages_exceeded",
     "en": "Document exceeds maximum number of pages",
     "es": "El documento excede el número máximo de páginas"
+  },
+    {
+    "keyword": "mobile_number_count_error",
+    "en": "Mobile number must be between 7 and 15 digits",
+    "es": "El número de teléfono debe tener entre 7 y 15 dígitos."
+  },   
+   {
+    "keyword": "country_code_specification_error",
+    "en": "Country code must start with + followed by 1-4 digits",
+    "es": "El código de país debe comenzar con + seguido de 1 a 4 dígitos."
+  },  
+   {
+    "keyword": "password_count_error",
+    "en": "Password must be 8-16 characters",
+    "es": "La contraseña debe tener entre 8 y 16 caracteres."
+  },   {
+    "keyword": "mobile_digit_error",
+    "en": "Mobile number must contain digits",
+    "es": "El número de teléfono debe contener solo dígitos."
+  },  {
+    "keyword": "verification_type_error",
+    "en": "Type of verification: mobile_verification or password_reset",
+    "es": "Tipo de verificación: verificación_móvil o restablecimiento_de_contraseña."
+  },
+  {
+    "keyword": "languageEn",
+    "en": "🇬🇧 English",
+    "es": "🇬🇧 Inglés"
+  },
+  {
+    "keyword": "languageEs",
+    "en": "🇪🇸 Spanish",
+    "es": "🇪🇸 Español"
+  },
+  {
+    "keyword": "changeLangauge",
+    "en": "Change Language",
+    "es": "Cambiar idioma"
+  },
+  {
+    "keyword": "btnChangeLanguage",
+    "en": "Change Language",
+    "es": "Cambiar idioma"
+  },
+  {
+    "keyword": "headerChangeLanguage",
+    "en": "Change Language",
+    "es": "Cambiar idioma"
+  },
+  {
+    "keyword": "profile_not_found",
+    "en": "Profile not found",
+    "es": "Perfil no encontrado"
+  },
+  {
+    "keyword": "profile_not_found_default",
+    "en": "No profile found. Returning default profile.",
+    "es": "No se encontró perfil. Devolviendo perfil predeterminado."
+  },
+  {
+    "keyword": "profile_fetched_successfully",
+    "en": "Profile fetched successfully",
+    "es": "Perfil obtenido exitosamente"
+  },
+  {
+    "keyword": "profile_created_successfully",
+    "en": "Profile created successfully",
+    "es": "Perfil creado exitosamente"
+  },
+  {
+    "keyword": "profile_updated_successfully",
+    "en": "Profile updated successfully",
+    "es": "Perfil actualizado exitosamente"
+  },
+  {
+    "keyword": "profile_deleted_successfully",
+    "en": "Profile deleted successfully",
+    "es": "Perfil eliminado exitosamente"
+  },
+  {
+    "keyword": "profile_picture_updated_successfully",
+    "en": "Profile picture updated successfully",
+    "es": "Foto de perfil actualizada exitosamente"
+  },
+  {
+    "keyword": "profile_picture_added_successfully",
+    "en": "Profile picture added successfully",
+    "es": "Foto de perfil añadida exitosamente"
+  },
+  {
+    "keyword": "invalid_profile_data",
+    "en": "Invalid profile data",
+    "es": "Datos de perfil inválidos"
+  },
+  {
+    "keyword": "file_type_not_allowed",
+    "en": "File type not allowed. Allowed types: {allowed_types}",
+    "es": "Tipo de archivo no permitido. Tipos permitidos: {allowed_types}"
+  },
+  {
+    "keyword": "error_saving_file",
+    "en": "Error saving file",
+    "es": "Error al guardar el archivo"
+  },
+  {
+    "keyword": "internal_server_error",
+    "en": "Internal server error",
+    "es": "Error interno del servidor"
+  },
+  {
+    "keyword": "weight_range_kg_error",
+    "en": "Weight must be between 20 and 500 kg",
+    "es": "El peso debe estar entre 20 y 500 kg"
+  },
+  {
+    "keyword": "weight_range_lbs_error",
+    "en": "Weight must be between 44.1 and 1102.3 lbs",
+    "es": "El peso debe estar entre 44.1 y 1102.3 lbs"
+  },
+  {
+    "keyword": "height_unit_error",
+    "en": "Height unit must be either \"cm\" or \"ft/in\"",
+    "es": "La unidad de altura debe ser \"cm\" o \"ft/in\""
+  },
+  {
+    "keyword": "weight_unit_error",
+    "en": "Weight unit must be either \"kg\" or \"lbs\"",
+    "es": "La unidad de peso debe ser \"kg\" o \"lbs\""
+  },
+  {
+    "keyword": "gender_error",
+    "en": "Gender must be either \"Male\", \"Female\", or \"Other\"",
+    "es": "El género debe ser \"Male\", \"Female\" u \"Other\""
+  },
+  {
+    "keyword": "profile_picture_url_error",
+    "en": "Invalid profile picture URL format",
+    "es": "Formato de URL de foto de perfil inválido"
+  },
+  {
+    "keyword": "prompts_retrieved_successfully",
+    "en": "Prompts retrieved successfully",
+    "es": "Prompts obtenidos exitosamente"
+  },
+  {
+    "keyword": "error_retrieving_prompts",
+    "en": "Error retrieving prompts",
+    "es": "Error al obtener prompts"
+  },
+  {
+    "keyword": "query_not_related_nutrition_exercise",
+    "en": "Query not related to Nutrition or Exercise",
+    "es": "Consulta no relacionada con Nutrición o Ejercicio"
+  },
+  {
+    "keyword": "error_processing_request",
+    "en": "An error occurred while processing your request",
+    "es": "Ocurrió un error al procesar tu solicitud"
+  },
+  {
+    "keyword": "chat_history_fetched_successfully",
+    "en": "Chat history fetched successfully",
+    "es": "Historial de chat obtenido exitosamente"
+  },
+  {
+    "keyword": "error_fetching_chat_history",
+    "en": "An error occurred while fetching chat history",
+    "es": "Ocurrió un error al obtener el historial de chat"
+  },
+  {
+    "keyword": "chat_history_retrieved_successfully",
+    "en": "Chat history retrieved successfully",
+    "es": "Historial de chat recuperado exitosamente"
+  },
+  {
+    "keyword": "document_uploaded_successfully",
+    "en": "Document uploaded successfully. Analysis in progress.",
+    "es": "Documento cargado exitosamente. Análisis en progreso."
+  },
+  {
+    "keyword": "error_uploading_document",
+    "en": "Error uploading document",
+    "es": "Error al cargar el documento"
+  },
+  {
+    "keyword": "documents_retrieved_successfully",
+    "en": "Documents retrieved successfully",
+    "es": "Documentos obtenidos exitosamente"
+  },
+  {
+    "keyword": "error_retrieving_documents",
+    "en": "Error retrieving documents",
+    "es": "Error al obtener documentos"
+  },
+  {
+    "keyword": "document_not_found",
+    "en": "Document not found",
+    "es": "Documento no encontrado"
+  },
+  {
+    "keyword": "document_analysis_completed",
+    "en": "Document analysis completed successfully",
+    "es": "Análisis del documento completado exitosamente"
+  },
+  {
+    "keyword": "error_analyzing_document",
+    "en": "Error analyzing document",
+    "es": "Error al analizar el documento"
+  },
+  {
+    "keyword": "file_size_exceeds_limit",
+    "en": "File size exceeds maximum allowed size of {max_size}MB",
+    "es": "El tamaño del archivo excede el tamaño máximo permitido de {max_size}MB"
+  },
+  {
+    "keyword": "file_type_not_supported",
+    "en": "File type '{file_type}' is not supported. Only PDF files are allowed.",
+    "es": "El tipo de archivo '{file_type}' no es compatible. Solo se permiten archivos PDF."
+  },
+  {
+    "keyword": "file_not_found_error",
+    "en": "File not found",
+    "es": "Archivo no encontrado"
+  },
+  {
+    "keyword": "unsupported_file_type_error",
+    "en": "Unsupported file type",
+    "es": "Tipo de archivo no compatible"
+  },
+  {
+    "keyword": "error_extracting_text",
+    "en": "Error extracting text from document",
+    "es": "Error al extraer texto del documento"
+  },
+  {
+    "keyword": "error_extracting_pdf",
+    "en": "Error extracting text from PDF",
+    "es": "Error al extraer texto del PDF"
+  },
+  {
+    "keyword": "invalid_conv_id_format",
+    "en": "Invalid conv_id format. Must be a valid UUID.",
+    "es": "Formato de conv_id inválido. Debe ser un UUID válido."
+  },
+  {
+    "keyword": "conversation_not_found",
+    "en": "Conversation not found",
+    "es": "Conversación no encontrada"
+  },
+  {
+    "keyword": "prompt_not_found",
+    "en": "Prompt not found",
+    "es": "Prompt no encontrado"
+  },
+  {
+    "keyword": "prompt_not_allowed",
+    "en": "Prompt type '{prompt_type}' is not allowed. Only {allowed_types} are supported.",
+    "es": "El tipo de prompt '{prompt_type}' no está permitido. Solo se admiten {allowed_types}."
+  },
+  {
+    "keyword": "conversation_not_belong_user",
+    "en": "Conversation does not belong to the current user",
+    "es": "La conversación no pertenece al usuario actual"
+  },
+  {
+    "keyword": "error_creating_conversation",
+    "en": "Error creating conversation",
+    "es": "Error al crear la conversación"
+  },
+  {
+    "keyword": "error_retrieving_prompts_service",
+    "en": "Error retrieving prompts",
+    "es": "Error al obtener prompts"
+  },
+  {
+    "keyword": "error_streaming_response",
+    "en": "Error during streaming response",
+    "es": "Error durante la respuesta en streaming"
+  },
+  {
+    "keyword": "no_prompts_found",
+    "en": "No prompts found in database",
+    "es": "No se encontraron prompts en la base de datos"
+  },
+  {
+    "keyword": "default_prompt_not_found",
+    "en": "Default prompt not found in database",
+    "es": "Prompt predeterminado no encontrado en la base de datos"
   }
 ]

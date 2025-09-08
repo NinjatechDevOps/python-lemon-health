@@ -40,7 +40,7 @@ class DocumentService:
         if file.size and file.size > DocumentService.MAX_FILE_SIZE:
             raise HTTPException(
                 status_code=400,
-                detail=f"File size exceeds maximum allowed size of {DocumentService.MAX_FILE_SIZE // (1024*1024)}MB"
+                detail="file_size_exceeds_limit"
             )
         
         # Check file extension
@@ -48,7 +48,7 @@ class DocumentService:
         if file_extension not in DocumentService.ALLOWED_EXTENSIONS:
             raise HTTPException(
                 status_code=400,
-                detail=f"File type '{file_extension}' is not supported. Only PDF files are allowed."
+                detail="file_type_not_supported"
             )
         
         return DocumentService.ALLOWED_EXTENSIONS[file_extension]
@@ -98,15 +98,15 @@ class DocumentService:
             file_path = Path(document.file_path)
             
             if not file_path.exists():
-                raise Exception(f"File not found: {file_path}")
+                raise Exception("file_not_found_error")
             
             if document.file_type == DocumentType.PDF:
                 return await DocumentService._extract_from_pdf(file_path)
             else:
-                raise Exception(f"Unsupported file type: {document.file_type}")
+                raise Exception("unsupported_file_type_error")
                 
         except Exception as e:
-            raise Exception(f"Error extracting text from document: {str(e)}")
+            raise Exception("error_extracting_text")
     
     @staticmethod
     async def _extract_from_pdf(file_path: Path) -> str:
@@ -119,7 +119,7 @@ class DocumentService:
                     text += page.extract_text() + "\n"
                 return text.strip()
         except Exception as e:
-            raise Exception(f"Error extracting text from PDF: {str(e)}")
+            raise Exception("error_extracting_pdf")
     
     @staticmethod
     async def analyze_document_content(content: str, user) -> Dict[str, Any]:
