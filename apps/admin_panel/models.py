@@ -8,7 +8,7 @@ class Translation(Base):
     __tablename__ = "translations"
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    keyword = Column(String, nullable=False, unique=True, index=True)
+    keyword = Column(String, nullable=False, index=True)
     en = Column(String, nullable=False)
     es = Column(String, nullable=False)
     is_deleted = Column(Boolean, default=False)
