@@ -51,6 +51,13 @@ async def get_current_user(
             detail={"success": False, "message": "Inactive user", "data": {}}
         )
     
+    # Check if user is soft deleted
+    if user.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"success": False, "message": "User not registered.", "data": {}}
+        )
+    
     return user
 
 

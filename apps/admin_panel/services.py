@@ -41,6 +41,10 @@ class AdminService:
             if not user:
                 return False, {"message": "You're not registered yet. Please sign up to continue."}
             
+            # Check if user is deleted (soft delete)
+            if user.is_deleted:
+                return False, {"message": "User account has been deleted"}
+            
             # Check if user is admin
             if not user.is_admin:
                 return False, {"message": "Access denied. Admin privileges required."}
@@ -132,7 +136,7 @@ class AdminService:
                         pass
             
             # Build base query with date filter if present
-            base_query = select(User)
+            base_query = select(User).where(User.is_deleted == False)
             if date_filter:
                 base_query = base_query.where(date_filter)
             
@@ -164,18 +168,27 @@ class AdminService:
                 # Calculate users created today, this week, this month (all-time)
                 today = datetime.utcnow().date()
                 today_result = await db.execute(
-                    select(func.count(User.id)).where(func.date(User.created_at) == today)
+                    select(func.count(User.id)).where(
+                        (func.date(User.created_at) == today) & 
+                        (User.is_deleted == False)
+                    )
                 )
                 users_created_today = today_result.scalar()
                 
                 week_ago = datetime.utcnow() - timedelta(days=7)
                 week_result = await db.execute(
-                    select(func.count(User.id)).where(User.created_at >= week_ago))
+                    select(func.count(User.id)).where(
+                        (User.created_at >= week_ago) & 
+                        (User.is_deleted == False)
+                    ))
                 users_created_this_week = week_result.scalar()
                 
                 month_ago = datetime.utcnow() - timedelta(days=30)
                 month_result = await db.execute(
-                    select(func.count(User.id)).where(User.created_at >= month_ago))
+                    select(func.count(User.id)).where(
+                        (User.created_at >= month_ago) & 
+                        (User.is_deleted == False)
+                    ))
                 users_created_this_month = month_result.scalar()
             
             return {
@@ -244,6 +257,11 @@ class AdminService:
             
             if is_verified is not None:
                 base_query = base_query.where(User.is_verified == is_verified)
+            
+            # Filter out deleted users (soft delete)
+            base_query = base_query.where(User.is_deleted == False)
+            
+            # Filter out admin users
             base_query = base_query.where(User.is_admin == False)
             # Get total count
             count_query = select(func.count()).select_from(base_query.subquery())
