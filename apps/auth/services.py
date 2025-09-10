@@ -440,6 +440,7 @@ class AuthService:
     async def soft_delete_user(db: AsyncSession, user: User) -> User:
         """Soft delete a user by setting is_active to False"""
         user.is_active = False
+        user.is_deleted = True
         await db.commit()
         await db.refresh(user)
         return user
