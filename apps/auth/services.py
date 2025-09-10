@@ -32,9 +32,11 @@ class AuthService:
         country_code: str
     ) -> Optional[User]:
         """Get a user by mobile number and country code"""
+        # Added is_deleted filter to exclude soft-deleted users
         query = select(User).where(
             User.mobile_number == mobile_number,
-            User.country_code == country_code
+            User.country_code == country_code,
+            User.is_deleted == False
         )
         result = await db.execute(query)
         return result.scalars().first()
@@ -42,14 +44,22 @@ class AuthService:
     @staticmethod
     async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
         """Get a user by ID"""
-        query = select(User).where(User.id == user_id)
+        # Added is_deleted filter to exclude soft-deleted users
+        query = select(User).where(
+            User.id == user_id,
+            User.is_deleted == False
+        )
         result = await db.execute(query)
         return result.scalars().first()
     
     @staticmethod
     async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
         """Get a user by email"""
-        query = select(User).where(User.email == email)
+        # Added is_deleted filter to exclude soft-deleted users
+        query = select(User).where(
+            User.email == email,
+            User.is_deleted == False
+        )
         result = await db.execute(query)
         return result.scalars().first()
     

@@ -33,8 +33,12 @@ class AdminService:
         """
         try:
             # Find user by mobile number
+            # Added is_deleted filter to exclude soft-deleted users
             result = await db.execute(
-                select(User).where(User.mobile_number == mobile_number)
+                select(User).where(
+                    User.mobile_number == mobile_number,
+                    User.is_deleted == False
+                )
             )
             user = result.scalar_one_or_none()
             
@@ -299,16 +303,24 @@ class AdminService:
         """
         try:
             # Check if mobile number already exists
+            # Added is_deleted filter to exclude soft-deleted users
             existing_user = await db.execute(
-                select(User).where(User.mobile_number == user_data.mobile_number)
+                select(User).where(
+                    User.mobile_number == user_data.mobile_number,
+                    User.is_deleted == False
+                )
             )
             if existing_user.scalar_one_or_none():
                 return False, None, "Mobile number already exists"
             
             # Check if email already exists (if provided)
             if user_data.email:
+                # Added is_deleted filter to exclude soft-deleted users
                 existing_email = await db.execute(
-                    select(User).where(User.email == user_data.email)
+                    select(User).where(
+                        User.email == user_data.email,
+                        User.is_deleted == False
+                    )
                 )
                 if existing_email.scalar_one_or_none():
                     return False, None, "Email already exists"
@@ -352,7 +364,13 @@ class AdminService:
         """
         try:
             # Get user
-            result = await db.execute(select(User).where(User.id == user_id))
+            # Added is_deleted filter to exclude soft-deleted users
+            result = await db.execute(
+                select(User).where(
+                    User.id == user_id,
+                    User.is_deleted == False
+                )
+            )
             user = result.scalar_one_or_none()
             
             if not user:
@@ -360,16 +378,24 @@ class AdminService:
             
             # Check for duplicate mobile number (if being updated)
             if user_data.mobile_number and user_data.mobile_number != user.mobile_number:
+                # Added is_deleted filter to exclude soft-deleted users
                 existing_user = await db.execute(
-                    select(User).where(User.mobile_number == user_data.mobile_number)
+                    select(User).where(
+                        User.mobile_number == user_data.mobile_number,
+                        User.is_deleted == False
+                    )
                 )
                 if existing_user.scalar_one_or_none():
                     return False, None, "Mobile number already exists"
             
             # Check for duplicate email (if being updated)
             if user_data.email and user_data.email != user.email:
+                # Added is_deleted filter to exclude soft-deleted users
                 existing_email = await db.execute(
-                    select(User).where(User.email == user_data.email)
+                    select(User).where(
+                        User.email == user_data.email,
+                        User.is_deleted == False
+                    )
                 )
                 if existing_email.scalar_one_or_none():
                     return False, None, "Email already exists"
@@ -408,7 +434,13 @@ class AdminService:
         Get user by ID
         """
         try:
-            result = await db.execute(select(User).where(User.id == user_id))
+            # Added is_deleted filter to exclude soft-deleted users
+            result = await db.execute(
+                select(User).where(
+                    User.id == user_id,
+                    User.is_deleted == False
+                )
+            )
             return result.scalar_one_or_none()
         except Exception as e:
             logger.error(f"Error getting user by ID: {e}")

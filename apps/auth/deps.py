@@ -38,7 +38,11 @@ async def get_current_user(
     except JWTError:
         raise credentials_exception
     
-    query = select(User).where(User.id == int(user_id))
+    # Added is_deleted filter to exclude soft-deleted users
+    query = select(User).where(
+        User.id == int(user_id),
+        User.is_deleted == False
+    )
     result = await db.execute(query)
     user = result.scalars().first()
     
@@ -53,9 +57,15 @@ async def get_current_user(
     
     # Check if user is soft deleted
     if user.is_deleted:
+        # Get translated message for user deleted
+        from apps.auth.services import AuthService
+        translated_message = await AuthService.get_translation_by_keyword(db, "user_deleted_keyword", "en")
+        if not translated_message:
+            translated_message = "User account has been deleted."
+        
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"success": False, "message": "User not registered.", "data": {}}
+            detail={"success": False, "message": translated_message, "data": {}}
         )
     
     return user
