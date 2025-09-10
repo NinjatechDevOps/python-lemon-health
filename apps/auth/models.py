@@ -16,9 +16,9 @@ class User(Base):
     User model for storing user authentication information
     """
     __tablename__ = "users"
-    __table_args__ = (
-        UniqueConstraint('country_code', 'mobile_number', name='uq_country_mobile'),
-    )
+    # __table_args__ = (
+    #     UniqueConstraint('country_code', 'mobile_number', name='uq_country_mobile'),
+    # )
     
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     first_name: Mapped[str] = mapped_column(String(50), nullable=False)
