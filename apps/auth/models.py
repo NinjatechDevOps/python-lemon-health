@@ -35,7 +35,7 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Optional email field (not used for primary authentication)
-    email: Mapped[Optional[str]] = mapped_column(String(255), unique=True, index=True, nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String(255), index=True, nullable=True)
     
     # Relationships
     profile: Mapped[ProfileRef] = relationship("Profile", back_populates="user", uselist=False)
