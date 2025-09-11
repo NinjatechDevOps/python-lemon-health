@@ -1,10 +1,11 @@
 import logging
 import os
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.exceptions import RequestValidationError
+from typing import Optional
 from apps.auth.routes import router as auth_router
 from apps.profile.routes import router as profile_router
 from apps.chat.routes import chat_router, document_router
@@ -325,26 +326,57 @@ async def health_check():
         }
     }
 
-# Updated: Adding direct routes for privacy policy and terms & conditions
-@app.get("/privacy-policy", response_class=HTMLResponse, tags=["Legal"])
-async def privacy_policy():
-    """Serve the privacy policy HTML page"""
-    try:
-        with open(os.path.join(settings.STATIC_ROOT, "legal", "privacy-policy.html"), "r") as f:
-            content = f.read()
-        return HTMLResponse(content=content)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Privacy policy not found")
+# Commented out: Static file serving without language support
+# @app.get("/privacy-policy", response_class=HTMLResponse, tags=["Legal"])
+# async def privacy_policy():
+#     """Serve the privacy policy HTML page"""
+#     try:
+#         with open(os.path.join(settings.STATIC_ROOT, "legal", "privacy-policy.html"), "r") as f:
+#             content = f.read()
+#         return HTMLResponse(content=content)
+#     except FileNotFoundError:
+#         raise HTTPException(status_code=404, detail="Privacy policy not found")
 
-@app.get("/terms-conditions", response_class=HTMLResponse, tags=["Legal"])
-async def terms_conditions():
-    """Serve the terms & conditions HTML page"""
+# Updated: Privacy policy route with language support based on App-Language header
+@app.get("/privacy-policy", response_class=HTMLResponse, tags=["Legal"])
+async def privacy_policy(app_language: Optional[str] = Header(None, alias="App-Language")):
+    """Serve the privacy policy HTML page based on language preference"""
+    # Default to English if no language specified or invalid language
+    language = app_language if app_language in ["en", "es"] else "en"
+    
     try:
-        with open(os.path.join(settings.STATIC_ROOT, "legal", "terms-conditions.html"), "r") as f:
+        file_path = os.path.join(settings.STATIC_ROOT, "legal", f"privacy-policy-{language}.html")
+        with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
         return HTMLResponse(content=content)
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Terms & conditions not found")
+        raise HTTPException(status_code=404, detail=f"Privacy policy not found for language: {language}")
+
+# Commented out: Static file serving without language support
+# @app.get("/terms-conditions", response_class=HTMLResponse, tags=["Legal"])
+# async def terms_conditions():
+#     """Serve the terms & conditions HTML page"""
+#     try:
+#         with open(os.path.join(settings.STATIC_ROOT, "legal", "terms-conditions.html"), "r") as f:
+#             content = f.read()
+#         return HTMLResponse(content=content)
+#     except FileNotFoundError:
+#         raise HTTPException(status_code=404, detail="Terms & conditions not found")
+
+# Updated: Terms & conditions route with language support based on App-Language header
+@app.get("/terms-conditions", response_class=HTMLResponse, tags=["Legal"])
+async def terms_conditions(app_language: Optional[str] = Header(None, alias="App-Language")):
+    """Serve the terms & conditions HTML page based on language preference"""
+    # Default to English if no language specified or invalid language
+    language = app_language if app_language in ["en", "es"] else "en"
+    
+    try:
+        file_path = os.path.join(settings.STATIC_ROOT, "legal", f"terms-conditions-{language}.html")
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return HTMLResponse(content=content)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Terms & conditions not found for language: {language}")
 
 if __name__ == "__main__":
     import uvicorn
