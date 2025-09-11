@@ -57,11 +57,11 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """Schema for user registration"""
-    password: str = Field(..., min_length=8, max_length=16, description="password_count_error")
+    password: str = Field(..., min_length=4, max_length=16, description="password_count_error")
     
     @validator('password')
     def validate_password(cls, v):
-        if len(v) < 8 or len(v) > 16:
+        if len(v) < 4 or len(v) > 16:
             raise ValueError('password_length_error')
         if not any(char.isupper() for char in v):
             raise ValueError('password_uppercase_required')
@@ -237,7 +237,7 @@ class ResetPasswordRequest(BaseModel):
         pattern=r"^\+[0-9]{1,4}$",
         description="country_code_specification_error"
     )  # Default to Spain (+34)
-    new_password: str = Field(..., min_length=8, max_length=16, description="password_count_error")
+    new_password: str = Field(..., min_length=4, max_length=16, description="password_count_error")
     
     @validator('mobile_number')
     def validate_mobile_number(cls, v):
@@ -257,7 +257,7 @@ class ResetPasswordRequest(BaseModel):
     
     @validator('new_password')
     def validate_password(cls, v):
-        if len(v) < 8 or len(v) > 16:
+        if len(v) < 4 or len(v) > 16:
             raise ValueError('password_length_error')
         if not any(char.isupper() for char in v):
             raise ValueError('password_uppercase_required')
@@ -273,11 +273,11 @@ class ResetPasswordRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     """Schema for changing password (for authenticated users)"""
     current_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=8, max_length=16, description="password_count_error")
+    new_password: str = Field(..., min_length=4, max_length=16, description="password_count_error")
     
     @validator('new_password')
     def validate_password(cls, v):
-        if len(v) < 8 or len(v) > 16:
+        if len(v) < 4 or len(v) > 16:
             raise ValueError('password_length_error')
         if not any(char.isupper() for char in v):
             raise ValueError('password_uppercase_required')
