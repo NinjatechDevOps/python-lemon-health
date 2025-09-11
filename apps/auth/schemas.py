@@ -63,14 +63,14 @@ class UserCreate(UserBase):
     def validate_password(cls, v):
         if len(v) < 4 or len(v) > 16:
             raise ValueError('password_length_error')
-        if not any(char.isupper() for char in v):
-            raise ValueError('password_uppercase_required')
-        if not any(char.islower() for char in v):
-            raise ValueError('password_lowercase_required')
-        if not any(char.isdigit() for char in v):
-            raise ValueError('password_number_required')
-        if not any(char in "!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~" for char in v):
-            raise ValueError('password_special_char_required')
+        # if not any(char.isupper() for char in v):
+        #     raise ValueError('password_uppercase_required')
+        # if not any(char.islower() for char in v):
+        #     raise ValueError('password_lowercase_required')
+        # if not any(char.isdigit() for char in v):
+        #     raise ValueError('password_number_required')
+        # if not any(char in "!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~" for char in v):
+        #     raise ValueError('password_special_char_required')
         return v
 
 
@@ -259,14 +259,14 @@ class ResetPasswordRequest(BaseModel):
     def validate_password(cls, v):
         if len(v) < 4 or len(v) > 16:
             raise ValueError('password_length_error')
-        if not any(char.isupper() for char in v):
-            raise ValueError('password_uppercase_required')
-        if not any(char.islower() for char in v):
-            raise ValueError('password_lowercase_required')
-        if not any(char.isdigit() for char in v):
-            raise ValueError('password_number_required')
-        if not any(char in "!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~" for char in v):
-            raise ValueError('password_special_char_required')
+        # if not any(char.isupper() for char in v):
+        #     raise ValueError('password_uppercase_required')
+        # if not any(char.islower() for char in v):
+        #     raise ValueError('password_lowercase_required')
+        # if not any(char.isdigit() for char in v):
+        #     raise ValueError('password_number_required')
+        # if not any(char in "!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~" for char in v):
+        #     raise ValueError('password_special_char_required')
         return v
 
 
@@ -279,14 +279,14 @@ class ChangePasswordRequest(BaseModel):
     def validate_password(cls, v):
         if len(v) < 4 or len(v) > 16:
             raise ValueError('password_length_error')
-        if not any(char.isupper() for char in v):
-            raise ValueError('password_uppercase_required')
-        if not any(char.islower() for char in v):
-            raise ValueError('password_lowercase_required')
-        if not any(char.isdigit() for char in v):
-            raise ValueError('password_number_required')
-        if not any(char in "!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~" for char in v):
-            raise ValueError('password_special_char_required')
+        # if not any(char.isupper() for char in v):
+        #     raise ValueError('password_uppercase_required')
+        # if not any(char.islower() for char in v):
+        #     raise ValueError('password_lowercase_required')
+        # if not any(char.isdigit() for char in v):
+        #     raise ValueError('password_number_required')
+        # if not any(char in "!@#$%^&*()-_=+[]{}|;:'\",.<>/?`~" for char in v):
+        #     raise ValueError('password_special_char_required')
         return v
 
 
