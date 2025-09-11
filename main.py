@@ -1,10 +1,11 @@
 import logging
 import os
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.exceptions import RequestValidationError
+from typing import Optional
 from apps.auth.routes import router as auth_router
 from apps.profile.routes import router as profile_router
 from apps.chat.routes import chat_router, document_router
@@ -325,12 +326,11 @@ async def health_check():
         }
     }
 
-# Updated: Adding direct routes for privacy policy and terms & conditions
 @app.get("/privacy-policy", response_class=HTMLResponse, tags=["Legal"])
 async def privacy_policy():
     """Serve the privacy policy HTML page"""
     try:
-        with open(os.path.join(settings.STATIC_ROOT, "legal", "privacy-policy.html"), "r") as f:
+        with open(os.path.join(settings.STATIC_ROOT, "legal", "privacy-policy-en.html"), "r") as f:
             content = f.read()
         return HTMLResponse(content=content)
     except FileNotFoundError:
@@ -340,7 +340,7 @@ async def privacy_policy():
 async def terms_conditions():
     """Serve the terms & conditions HTML page"""
     try:
-        with open(os.path.join(settings.STATIC_ROOT, "legal", "terms-conditions.html"), "r") as f:
+        with open(os.path.join(settings.STATIC_ROOT, "legal", "terms-conditions-en.html"), "r") as f:
             content = f.read()
         return HTMLResponse(content=content)
     except FileNotFoundError:
