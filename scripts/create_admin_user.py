@@ -58,8 +58,8 @@ async def create_admin_user():
         print("❌ Passwords do not match")
         return False
     
-    if len(password) < 6:
-        print("❌ Password must be at least 6 characters long")
+    if len(password) < 4:
+        print("❌ Password must be at least 4 characters long")
         return False
     
     # Confirm creation

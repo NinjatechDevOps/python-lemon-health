@@ -49,7 +49,7 @@ class AdminCreateUserRequest(BaseModel):
     last_name: str = Field(..., min_length=1, max_length=50)
     mobile_number: str = Field(..., min_length=7, max_length=15)
     country_code: str = Field(default="+91", max_length=10)
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=4,max_length=16)
     email: Optional[str] = Field(None, max_length=255)
     is_verified: bool = Field(..., description="Whether the user is verified (admin must explicitly set this)")
     
